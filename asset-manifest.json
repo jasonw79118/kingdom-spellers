@@ -1,0 +1,13 @@
+{
+  "files": {
+    "main.css": "/kingdom-spellers/static/css/main.273d8141.css",
+    "main.js": "/kingdom-spellers/static/js/main.a198f44d.js",
+    "index.html": "/kingdom-spellers/index.html",
+    "main.273d8141.css.map": "/kingdom-spellers/static/css/main.273d8141.css.map",
+    "main.a198f44d.js.map": "/kingdom-spellers/static/js/main.a198f44d.js.map"
+  },
+  "entrypoints": [
+    "static/css/main.273d8141.css",
+    "static/js/main.a198f44d.js"
+  ]
+}
