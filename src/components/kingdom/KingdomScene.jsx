@@ -4,12 +4,11 @@
 //   sky → far range → mid hills → ground → buildings → foreground
 //
 // Built buildings appear as illustrations on the ground line; unbuilt ones
-// show as a marked-out empty plot. The player's avatar stands in the scene.
+// show as a marked-out plot. Buildings are drawn on the ground line.
 
-import { useRef, useMemo, useState, useEffect } from "react";
-import { KINGDOMS } from "../../game/kingdom";
-import { BuildingArt, buildingSize } from "./buildingArt";
-import Avatar from "../Avatar";
+import { useRef, useMemo, useState } from "react";
+import { KINGDOMS, PLOT, plotState, isRegionComplete, castleBuilt } from "../../game/kingdom";
+import { BuildingArt, buildingSize, LandArt } from "./buildingArt";
 
 // Theme palettes for the five territories.
 const THEMES = {
@@ -81,8 +80,63 @@ function Decor({ glyph, color }) {
   );
 }
 
-// An empty, marked-out plot awaiting construction.
-function EmptyPlot({ x, y, w, onClick, label }) {
+// Untouched land — trees/rocks, not ready to build on.
+function WildPlot({ x, y, w, glyph, tint, onClick, label }) {
+  const [hover, setHover] = useState(false);
+  return (
+    <g
+      transform={`translate(${x} ${y})`}
+      onClick={onClick}
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+      style={{ cursor: onClick ? "pointer" : "default" }}
+      role={onClick ? "button" : undefined}
+      tabIndex={onClick ? 0 : undefined}
+      aria-label={label}
+      onKeyDown={(e) => {
+        if (onClick && (e.key === "Enter" || e.key === " ")) {
+          e.preventDefault();
+          onClick();
+        }
+      }}
+      opacity={hover ? 0.9 : 1}
+    >
+      <g transform={`translate(${(w - 92) / 2} 0)`}>
+        <LandArt state="wild" glyph={glyph} tint={tint} />
+      </g>
+      {hover && (
+        <rect
+          x={4}
+          y={-14}
+          width={w - 8}
+          height={22}
+          rx={8}
+          fill="rgba(232,182,76,0.22)"
+          stroke="#e8b64c"
+          strokeWidth="2"
+          strokeDasharray="7 6"
+        />
+      )}
+      <text
+        x={w / 2}
+        y={2}
+        textAnchor="middle"
+        fontSize="12"
+        fontFamily="var(--font-body)"
+        fontWeight="700"
+        fill={hover ? "#a5821a" : "rgba(45,42,50,0.55)"}
+        stroke="rgba(255,255,255,0.75)"
+        strokeWidth="3"
+        paintOrder="stroke"
+      >
+        {hover ? "Clear the land" : "Wild land"}
+      </text>
+    </g>
+  );
+}
+
+// Land that has been cleared and is ready for building.
+function ClearedPlot({ x, y, w, onClick, label }) {
   const [hover, setHover] = useState(false);
   return (
     <g
@@ -101,14 +155,17 @@ function EmptyPlot({ x, y, w, onClick, label }) {
         }
       }}
     >
+      <g transform={`translate(${(w - 92) / 2} 0)`}>
+        <LandArt state="cleared" />
+      </g>
       <rect
         x={4}
         y={-14}
         width={w - 8}
         height={22}
         rx={8}
-        fill={hover ? "rgba(232,182,76,0.22)" : "rgba(45,42,50,0.10)"}
-        stroke={hover ? "#e8b64c" : "rgba(45,42,50,0.28)"}
+        fill={hover ? "rgba(232,182,76,0.25)" : "rgba(90,168,106,0.14)"}
+        stroke={hover ? "#e8b64c" : "rgba(74,124,89,0.55)"}
         strokeWidth="2"
         strokeDasharray="7 6"
       />
@@ -116,12 +173,12 @@ function EmptyPlot({ x, y, w, onClick, label }) {
         x={w / 2}
         y={2}
         textAnchor="middle"
-        fontSize="13"
+        fontSize="12"
         fontFamily="var(--font-body)"
         fontWeight="700"
-        fill={hover ? "#a5821a" : "rgba(45,42,50,0.5)"}
+        fill={hover ? "#a5821a" : "var(--forest-dark)"}
       >
-        {hover ? "Build!" : "Empty plot"}
+        {hover ? "Build here!" : "Cleared — ready"}
       </text>
     </g>
   );
@@ -167,7 +224,9 @@ export default function KingdomScene({ kingdomId, built = {}, onSelectPlot, just
     return { building: b, x: centre - size.w / 2, y: GROUND_Y + 6 };
   });
 
-  const builtCount = kingdom.buildings.filter((b) => built[b.id]).length;
+  const builtCount = kingdom.buildings.filter((b) => plotState(built, b.id) === PLOT.BUILT).length;
+  const complete = isRegionComplete(built, kingdom);
+  const hasCastle = castleBuilt(built, kingdom);
 
   return (
     <div
@@ -214,27 +273,45 @@ export default function KingdomScene({ kingdomId, built = {}, onSelectPlot, just
         <rect x={0} y={GROUND_Y} width={W} height={120} fill={`url(#ground-${kingdom.theme})`} />
         <rect x={0} y={GROUND_Y} width={W} height={6} fill={theme.groundEdge} opacity="0.6" />
 
-        {/* buildings / plots */}
-        {placements.map(({ building, x, y }) =>
-          built[building.id] ? (
-            <PlacedBuilding
-              key={building.id}
-              building={building}
-              x={x}
-              y={y}
-              justBuilt={justBuilt === building.id}
-            />
-          ) : (
-            <EmptyPlot
+        {/* buildings / wild land / cleared plots */}
+        {placements.map(({ building, x, y }) => {
+          const state = plotState(built, building.id);
+          if (state === PLOT.BUILT) {
+            return (
+              <PlacedBuilding
+                key={building.id}
+                building={building}
+                x={x}
+                y={y}
+                justBuilt={justBuilt === building.id}
+              />
+            );
+          }
+          if (state === PLOT.CLEARED) {
+            return (
+              <ClearedPlot
+                key={building.id}
+                x={x}
+                y={y + 4}
+                w={buildingSize(building.id).w}
+                onClick={onSelectPlot ? () => onSelectPlot(building) : undefined}
+                label={`Cleared land — build ${building.name}`}
+              />
+            );
+          }
+          return (
+            <WildPlot
               key={building.id}
               x={x}
               y={y + 4}
               w={buildingSize(building.id).w}
+              glyph={kingdom.wild}
+              tint={theme.groundEdge}
               onClick={onSelectPlot ? () => onSelectPlot(building) : undefined}
-              label={`Empty plot — build ${building.name}`}
+              label={`Wild land — clear to build ${building.name}`}
             />
-          )
-        )}
+          );
+        })}
 
         {/* grass tufts on the foreground */}
         <g opacity="0.5" style={{ transform: `translate(${tilt.x * 1.8}px, ${tilt.y * 1.8}px)`, transition: "transform .25s ease-out" }}>
@@ -257,8 +334,11 @@ export default function KingdomScene({ kingdomId, built = {}, onSelectPlot, just
       >
         <span>{kingdom.name}</span>
         <span className="badge badge-forest" style={{ fontSize: "0.7rem" }}>
-          {builtCount}/{slots} built
+          {complete ? "🏰 Complete!" : `${builtCount}/${slots} built`}
         </span>
+        {!complete && hasCastle && (
+          <span className="badge badge-gold" style={{ fontSize: "0.7rem" }}>🏰 Castle raised!</span>
+        )}
       </div>
     </div>
   );

@@ -53,17 +53,23 @@ export function rankProgress(prosperity) {
 // ---------------------------------------------------------------------------
 // REWARDS
 // ---------------------------------------------------------------------------
+// Royal Tests are graded practice: they build mastery and feed the progress
+// report, but they deliberately pay NO gold or XP, so points always come from
+// real practice and the kingdom can never be farmed by re-testing.
 export const REWARDS = {
   // Gold awarded per correct spelling. Scaled a little by difficulty.
   goldPerWord: { easy: 12, medium: 10, hard: 14 },
-  // Bonus gold the first time a word is spelled correctly ever.
-  goldFirstMastery: 25,
   // Multipliers applied to the base award.
   streakBonusPerDay: 0.05,   // +5% per consecutive practice day (cap below)
   streakBonusCap: 0.5,       // max +50%
-  testBonus: 1.5,            // Royal Test pays 1.5x
   reviewBonus: 0.25,         // re-practising a word you've missed
+  // Tests pay nothing.
+  testGold: 0,
+  testXp: 0,
 };
+
+// XP for one correct word in a practice session.
+export const XP_PER_WORD = 10;
 
 // Gold needed to "claim" a new territory.
 export const TERRITORY_CLAIM_COST = [
@@ -77,23 +83,28 @@ export const TERRITORY_CLAIM_COST = [
 // ---------------------------------------------------------------------------
 // KINGDOMS + BUILDINGS
 // ---------------------------------------------------------------------------
-// Every building has a gold cost and a prosperity value. Prosperity is what
-// drives rank, so expensive/large buildings move the needle a lot.
+// Land starts wild — covered in trees and rocks. Each plot must be CLEARED
+// first (cheap), then BUILT on (expensive). Every territory ends with a
+// castle, the grand capstone that completes the region.
+//
+// `clearCost` is the gold to clear the plot; `cost` is the gold to build.
 export const KINGDOMS = [
   {
     id: 1,
     name: "Greenwood Village",
     subtitle: "A quiet start among tall trees",
     theme: "forest",
+    wild: "🌳",
     sky: ["#bfe6c8", "#8fce9e"],
     ground: "#6aa96f",
     buildings: [
-      { id: "cottage", name: "Wooden Cottage", icon: "🏠", cost: 40, prosperity: 30, tier: 0 },
-      { id: "well", name: "Village Well", icon: "🕳️", cost: 60, prosperity: 45, tier: 0 },
-      { id: "bakery", name: "Village Bakery", icon: "🥖", cost: 90, prosperity: 65, tier: 0 },
-      { id: "market", name: "Open Market", icon: "🏪", cost: 140, prosperity: 90, tier: 1 },
-      { id: "schoolhouse", name: "Little School", icon: "🏫", cost: 200, prosperity: 130, tier: 1 },
-      { id: "townhall", name: "Town Hall", icon: "🏛️", cost: 320, prosperity: 200, tier: 2 },
+      { id: "cottage", name: "Wooden Cottage", icon: "🏠", cost: 40, clearCost: 10, prosperity: 30, tier: 0 },
+      { id: "well", name: "Village Well", icon: "🕳️", cost: 60, clearCost: 14, prosperity: 45, tier: 0 },
+      { id: "bakery", name: "Village Bakery", icon: "🥖", cost: 90, clearCost: 20, prosperity: 65, tier: 0 },
+      { id: "market", name: "Open Market", icon: "🏪", cost: 140, clearCost: 30, prosperity: 90, tier: 1 },
+      { id: "schoolhouse", name: "Little School", icon: "🏫", cost: 200, clearCost: 45, prosperity: 130, tier: 1 },
+      { id: "townhall", name: "Town Hall", icon: "🏛️", cost: 320, clearCost: 70, prosperity: 200, tier: 2 },
+      { id: "greenwoodcastle", name: "Greenwood Castle", icon: "🏰", cost: 600, clearCost: 120, prosperity: 420, tier: 3, castle: true },
     ],
   },
   {
@@ -101,14 +112,16 @@ export const KINGDOMS = [
     name: "Riverstone Crossing",
     subtitle: "Where the river meets the road",
     theme: "river",
+    wild: "🌾",
     sky: ["#cfe6f5", "#9cc6e0"],
     ground: "#6f9f6a",
     buildings: [
-      { id: "dock", name: "Wooden Dock", icon: "⚓", cost: 120, prosperity: 90, tier: 0 },
-      { id: "mill", name: "Water Mill", icon: "🌾", cost: 220, prosperity: 150, tier: 0 },
-      { id: "bridge", name: "Stone Bridge", icon: "🌉", cost: 340, prosperity: 220, tier: 1 },
-      { id: "fishery", name: "Riverside Fishery", icon: "🎣", cost: 480, prosperity: 300, tier: 1 },
-      { id: "inn", name: "Crossing Inn", icon: "🍺", cost: 680, prosperity: 420, tier: 2 },
+      { id: "dock", name: "Wooden Dock", icon: "⚓", cost: 120, clearCost: 25, prosperity: 90, tier: 0 },
+      { id: "mill", name: "Water Mill", icon: "🌾", cost: 220, clearCost: 45, prosperity: 150, tier: 0 },
+      { id: "bridge", name: "Stone Bridge", icon: "🌉", cost: 340, clearCost: 70, prosperity: 220, tier: 1 },
+      { id: "fishery", name: "Riverside Fishery", icon: "🎣", cost: 480, clearCost: 95, prosperity: 300, tier: 1 },
+      { id: "inn", name: "Crossing Inn", icon: "🍺", cost: 680, clearCost: 130, prosperity: 420, tier: 2 },
+      { id: "rivercastle", name: "Riverstone Castle", icon: "🏰", cost: 1000, clearCost: 190, prosperity: 650, tier: 3, castle: true },
     ],
   },
   {
@@ -116,13 +129,15 @@ export const KINGDOMS = [
     name: "Highland Keep",
     subtitle: "A stronghold above the clouds",
     theme: "highland",
+    wild: "🌲",
     sky: ["#dfe4ef", "#b9c2d6"],
     ground: "#7d8b6a",
     buildings: [
-      { id: "watchtower", name: "Stone Watchtower", icon: "🗼", cost: 200, prosperity: 150, tier: 0 },
-      { id: "barracks", name: "Guard Barracks", icon: "🛡️", cost: 320, prosperity: 230, tier: 0 },
-      { id: "chapel", name: "Highland Chapel", icon: "⛪", cost: 480, prosperity: 330, tier: 1 },
-      { id: "greatkeep", name: "The Great Keep", icon: "🏰", cost: 780, prosperity: 520, tier: 2 },
+      { id: "watchtower", name: "Stone Watchtower", icon: "🗼", cost: 200, clearCost: 40, prosperity: 150, tier: 0 },
+      { id: "barracks", name: "Guard Barracks", icon: "🛡️", cost: 320, clearCost: 65, prosperity: 230, tier: 0 },
+      { id: "chapel", name: "Highland Chapel", icon: "⛪", cost: 480, clearCost: 95, prosperity: 330, tier: 1 },
+      { id: "greatkeep", name: "The Great Keep", icon: "🏯", cost: 780, clearCost: 150, prosperity: 520, tier: 2 },
+      { id: "highlandcastle", name: "Highland Castle", icon: "🏰", cost: 1200, clearCost: 220, prosperity: 780, tier: 3, castle: true },
     ],
   },
   {
@@ -130,13 +145,15 @@ export const KINGDOMS = [
     name: "Crystal Caverns",
     subtitle: "Caverns that sing in the dark",
     theme: "cavern",
+    wild: "🪨",
     sky: ["#d7d2f2", "#b0a5e0"],
     ground: "#6b5b9e",
     buildings: [
-      { id: "mine", name: "Crystal Mine", icon: "⛏️", cost: 300, prosperity: 220, tier: 0 },
-      { id: "gemcutter", name: "Gem Cutter's Hall", icon: "💎", cost: 520, prosperity: 360, tier: 0 },
-      { id: "bridgeoflight", name: "Bridge of Light", icon: "🌟", cost: 860, prosperity: 560, tier: 1 },
-      { id: "cathedral", name: "Crystal Cathedral", icon: "⛩️", cost: 1300, prosperity: 820, tier: 2 },
+      { id: "mine", name: "Crystal Mine", icon: "⛏️", cost: 300, clearCost: 60, prosperity: 220, tier: 0 },
+      { id: "gemcutter", name: "Gem Cutter's Hall", icon: "💎", cost: 520, clearCost: 100, prosperity: 360, tier: 0 },
+      { id: "bridgeoflight", name: "Bridge of Light", icon: "🌟", cost: 860, clearCost: 160, prosperity: 560, tier: 1 },
+      { id: "cathedral", name: "Crystal Cathedral", icon: "⛩️", cost: 1300, clearCost: 230, prosperity: 820, tier: 2 },
+      { id: "crystalcastle", name: "Crystal Palace", icon: "🏰", cost: 1800, clearCost: 300, prosperity: 1100, tier: 3, castle: true },
     ],
   },
   {
@@ -144,13 +161,15 @@ export const KINGDOMS = [
     name: "Dragon Peak",
     subtitle: "The highest mountain in the realm",
     theme: "peak",
+    wild: "🌋",
     sky: ["#ffd9c0", "#f0a882"],
     ground: "#8a5a4a",
     buildings: [
-      { id: "camp", name: "Climber's Camp", icon: "⛺", cost: 400, prosperity: 300, tier: 0 },
-      { id: "lair", name: "Dragon Lair", icon: "🐉", cost: 700, prosperity: 500, tier: 0 },
-      { id: "observatory", name: "Sky Observatory", icon: "🔭", cost: 1100, prosperity: 760, tier: 1 },
-      { id: "throne", name: "Dragon Throne", icon: "👑", cost: 1800, prosperity: 1200, tier: 2 },
+      { id: "camp", name: "Climber's Camp", icon: "⛺", cost: 400, clearCost: 80, prosperity: 300, tier: 0 },
+      { id: "lair", name: "Dragon Lair", icon: "🐉", cost: 700, clearCost: 135, prosperity: 500, tier: 0 },
+      { id: "observatory", name: "Sky Observatory", icon: "🔭", cost: 1100, clearCost: 200, prosperity: 760, tier: 1 },
+      { id: "throne", name: "Dragon Throne", icon: "👑", cost: 1800, clearCost: 310, prosperity: 1200, tier: 2 },
+      { id: "dragoncastle", name: "Dragon Citadel", icon: "🏰", cost: 2400, clearCost: 400, prosperity: 1500, tier: 3, castle: true },
     ],
   },
 ];
@@ -159,7 +178,7 @@ export const KINGDOMS = [
 // PROGRESSION HELPERS
 // ---------------------------------------------------------------------------
 
-// Total prosperity = sum of prosperity of every built building.
+// Total prosperity = sum of prosperity of every BUILT building.
 export function prosperityOf(builtIds) {
   const built = new Set(builtIds || []);
   return KINGDOMS.reduce((total, kingdom) => {
@@ -168,6 +187,56 @@ export function prosperityOf(builtIds) {
     }
     return total;
   }, 0);
+}
+
+// ---------------------------------------------------------------------------
+// PLOT STATES
+// ---------------------------------------------------------------------------
+// Each plot is one of:
+//   "wild"    — untouched land, full of trees/rocks (the default)
+//   "cleared" — land cleared, ready to build
+//   "built"   — a building stands here
+export const PLOT = { WILD: "wild", CLEARED: "cleared", BUILT: "built" };
+
+// Read a plot's state out of the saved progress object.
+//
+// Older saves stored `{ cottage: true }`. Those migrate to BUILT so an
+// existing kingdom is never silently wiped back to wild land. Anything
+// missing, false or unrecognised is wild land — what a fresh kingdom looks like.
+export function plotState(progress, plotId) {
+  const v = progress?.[plotId];
+  if (v === PLOT.BUILT || v === PLOT.CLEARED) return v;
+  if (v === true) return PLOT.BUILT;
+  return PLOT.WILD;
+}
+
+// Plots in a given state, optionally within one territory.
+export function plotsInState(progress, state, kingdom) {
+  const list = kingdom ? [kingdom] : KINGDOMS;
+  const out = [];
+  for (const k of list) {
+    for (const b of k.buildings) {
+      if (plotState(progress, b.id) === state) out.push({ building: b, kingdom: k });
+    }
+  }
+  return out;
+}
+
+// Has this territory's castle been raised? The castle is the capstone
+// building, so this is the region's milestone moment.
+export function castleBuilt(progress, kingdom) {
+  const c = castleOf(kingdom);
+  return Boolean(c) && plotState(progress, c.id) === PLOT.BUILT;
+}
+
+// Is every plot in this territory built? (the stricter "fully developed" state)
+export function isRegionComplete(progress, kingdom) {
+  return kingdom.buildings.every((b) => plotState(progress, b.id) === PLOT.BUILT);
+}
+
+// The castle in a territory, if it has one.
+export function castleOf(kingdom) {
+  return kingdom.buildings.find((b) => b.castle) || null;
 }
 
 // Find a building by its (globally unique) id.
@@ -190,19 +259,21 @@ export function canClaimTerritory(kingdomIndex, gold) {
   return typeof cost === "number" && gold >= cost;
 }
 
-// Gold for one correct word, factoring in streak, mode and review status.
+// Gold for one correct word, factoring in streak and mode.
+// Tests pay nothing — see REWARDS.
 export function goldForWord({
   difficulty = "medium",
   streak = 0,
   isTest = false,
   isReview = false,
 } = {}) {
+  if (isTest) return REWARDS.testGold;
+
   let gold = REWARDS.goldPerWord[difficulty] ?? REWARDS.goldPerWord.medium;
 
   const streakMult = 1 + Math.min(REWARDS.streakBonusCap, streak * REWARDS.streakBonusPerDay);
   gold *= streakMult;
 
-  if (isTest) gold *= REWARDS.testBonus;
   if (isReview) gold += gold * REWARDS.reviewBonus;
 
   return Math.max(1, Math.round(gold));

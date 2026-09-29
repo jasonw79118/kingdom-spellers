@@ -4,7 +4,9 @@ import {
   scoreMastery, masteryLevel, buildPracticeSet, practiceWeight, needsPractice,
 } from "../src/game/mastery.js";
 import {
-  RANKS, rankForProsperity, rankProgress, prosperityOf, goldForWord, KINGDOMS, TERRITORY_CLAIM_COST,
+  RANKS, rankForProsperity, rankProgress, prosperityOf, goldForWord,
+  KINGDOMS, TERRITORY_CLAIM_COST, REWARDS, PLOT, plotState, isRegionComplete,
+  castleOf, castleBuilt,
 } from "../src/game/kingdom.js";
 
 let pass = 0, fail = 0;
@@ -67,13 +69,65 @@ check("full build outranks the top rank", totalProsperity > topRank);
 check("top rank is reachable mid-game (not only at 100%)", totalProsperity > topRank * 2);
 check("first kingdom alone takes you past Esquire", prosperityOf(KINGDOMS[0].buildings.map(b => b.id)) > RANKS[1].min);
 check("hard mode pays more than easy", goldForWord({ difficulty: "hard" }) > goldForWord({ difficulty: "easy" }));
-check("test mode pays more", goldForWord({ isTest: true }) > goldForWord({}));
 check("streak increases pay", goldForWord({ streak: 4 }) > goldForWord({ streak: 0 }));
 check("territory costs increase", TERRITORY_CLAIM_COST.every((c, i, a) => i === 0 || c > a[i - 1]));
 check("every kingdom is worth building", KINGDOMS.every((k) =>
   k.buildings.reduce((s, b) => s + b.prosperity, 0) / k.buildings.reduce((s, b) => s + b.cost, 0) > 0.5
 ));
 check("a perfect record reaches 100", scoreMastery({ attempts: 5, correct: 5, streak: 5 }) === 100);
+
+console.log("\ntests pay nothing");
+check("Royal Test gives 0 gold", goldForWord({ isTest: true }) === 0);
+check("Royal Test pays 0 regardless of difficulty/streak",
+  goldForWord({ isTest: true, difficulty: "hard", streak: 20 }) === 0);
+check("test XP is zero", REWARDS.testXp === 0 && REWARDS.testGold === 0);
+check("practice still pays", goldForWord({}) > 0);
+
+console.log("\nplots, clearing and castles");
+check("unknown plot is wild land", plotState({}, "anything") === PLOT.WILD);
+check("old boolean true migrates to built", plotState({ cottage: true }, "cottage") === PLOT.BUILT);
+check("cleared state round-trips", plotState({ cottage: PLOT.CLEARED }, "cottage") === PLOT.CLEARED);
+check("every territory has exactly one castle",
+  KINGDOMS.every((k) => k.buildings.filter((b) => b.castle).length === 1));
+check("the castle is the most expensive building in its territory",
+  KINGDOMS.every((k) => {
+    const c = castleOf(k);
+    return k.buildings.every((b) => b.cost <= c.cost);
+  }));
+check("every plot can be cleared for less than it costs to build",
+  KINGDOMS.every((k) => k.buildings.every((b) => b.clearCost > 0 && b.clearCost < b.cost)));
+check("region is not complete while any plot is still wild", (() => {
+  const k = KINGDOMS[0];
+  const all = {};
+  for (const b of k.buildings) all[b.id] = PLOT.BUILT;
+  // leave one ordinary plot unbuilt, but keep the castle raised
+  all[k.buildings[0].id] = PLOT.WILD;
+  return isRegionComplete(all, k) === false;
+})());
+check("cleared-but-unbuilt plots do not count as complete", (() => {
+  const k = KINGDOMS[0];
+  const all = {};
+  for (const b of k.buildings) all[b.id] = PLOT.BUILT;
+  all[k.buildings[0].id] = PLOT.CLEARED;
+  return isRegionComplete(all, k) === false;
+})());
+check("castle alone is a milestone, not full completion", (() => {
+  const k = KINGDOMS[0];
+  const only = { [castleOf(k).id]: PLOT.BUILT };
+  return castleBuilt(only, k) === true && isRegionComplete(only, k) === false;
+})());
+check("region is complete only when everything is built", (() => {
+  const k = KINGDOMS[0];
+  const all = {};
+  for (const b of k.buildings) all[b.id] = PLOT.BUILT;
+  return isRegionComplete(all, k) === true && castleBuilt(all, k) === true;
+})());
+check("clearing a plot yields no prosperity", (() => {
+  const k = KINGDOMS[0];
+  const p = {};
+  for (const b of k.buildings) p[b.id] = PLOT.CLEARED;
+  return prosperityOf(Object.entries(p).filter(([, v]) => v === PLOT.BUILT).map(([k2]) => k2)) === 0;
+})());
 
 console.log("\nprogress report helpers");
 const recs = [

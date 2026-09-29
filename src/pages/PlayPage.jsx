@@ -9,8 +9,10 @@ import { backend } from "../lib/backend";
 import Avatar from "../components/Avatar";
 import { buildPracticeSet, masteryLevel } from "../game/mastery";
 import { createSession, buildPuzzle, gradeAnswer, advanceSession, sessionSummary, MODES } from "../game/practice";
-import { goldForWord } from "../game/kingdom";
+import { goldForWord, REWARDS, XP_PER_WORD } from "../game/kingdom";
 import { speakWord, speakSlow, stopSpeaking } from "../lib/speech";
+import { prefersSlow, setPrefersSlow } from "../components/VoicePicker";
+import VoicePicker from "../components/VoicePicker";
 import { normalizeWord, shuffleArray } from "../lib/utils";
 
 export default function PlayPage() {
@@ -169,25 +171,41 @@ export default function PlayPage() {
       console.error("recordAttempt failed", err);
     }
 
-    // Reward
+    // Reward — tests are graded practice and pay nothing, so points always
+    // come from real practice.
     if (grade.correct) {
+      const isTest = session.mode === "test";
       const gold = goldForWord({
         difficulty: player.difficulty,
         streak: player.streak || 0,
-        isTest: session.mode === "test",
+        isTest,
       });
-      const xp = 10;
-      setEarnedGold((g) => g + gold);
-      setEarnedXp((x) => x + xp);
-      setReward({ gold, xp });
-      try {
-        await backend.profiles.update(player.id, {
-          coins: (player.coins || 0) + gold,
-          xp: (player.xp || 0) + xp,
-        });
-      } catch (err) {
-        console.error(err);
+      const xp = isTest ? REWARDS.testXp : XP_PER_WORD;
+      if (gold > 0) {
+        setEarnedGold((g) => g + gold);
+        try {
+          await backend.profiles.update(player.id, {
+            coins: (player.coins || 0) + gold,
+          });
+        } catch (err) {
+          console.error(err);
+        }
       }
+      if (xp > 0) {
+        setEarnedXp((x) => x + xp);
+        try {
+          const fresh = await backend.profiles.list();
+          const me = fresh.find((p) => p.id === player.id);
+          if (me) await backend.profiles.update(player.id, { xp: (me.xp || 0) + xp });
+        } catch (err) {
+          console.error(err);
+        }
+      }
+      setReward(
+        gold > 0
+          ? { gold, xp }
+          : { gold: 0, xp: 0, isTest: true }
+      );
     }
 
     setTimeout(next, grade.correct ? 1100 : 1700);
@@ -313,6 +331,8 @@ export default function PlayPage() {
             🏰 Visit your kingdom
           </button>
         </div>
+
+        <VoicePicker />
       </div>
     );
   }
@@ -370,9 +390,24 @@ export default function PlayPage() {
 
         {/* audio controls */}
         {currentWord && (
-          <div className="ks-row" style={{ justifyContent: "center", gap: 8 }}>
-            <button type="button" className="btn btn-ghost btn-sm" onClick={() => speakWord(currentWord.word)}>
+          <div className="ks-row" style={{ justifyContent: "center", gap: 8, flexWrap: "wrap" }}>
+            <button
+              type="button"
+              className="btn btn-ghost btn-sm"
+              onClick={() => speakWord(currentWord.word, { slow: prefersSlow() })}
+            >
               🔊 Hear word
+            </button>
+            <button
+              type="button"
+              className="btn btn-ghost btn-sm"
+              onClick={() => {
+                const next = !prefersSlow();
+                setPrefersSlow(next);
+                speakWord(currentWord.word, { slow: next });
+              }}
+            >
+              🐢 Slower
             </button>
             <button
               type="button"
@@ -416,9 +451,11 @@ export default function PlayPage() {
             {feedback.correct ? (
               <>
                 <h2 style={{ margin: 0, color: "var(--forest)" }}>🎉 Correct!</h2>
-                {reward && (
+                {reward?.isTest ? (
+                  <span className="badge badge-forest">Test practice — no points</span>
+                ) : reward ? (
                   <span className="badge badge-gold">+{reward.gold} gold · +{reward.xp} XP</span>
-                )}
+                ) : null}
               </>
             ) : (
               <>

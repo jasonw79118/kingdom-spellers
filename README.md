@@ -277,26 +277,53 @@ The rebuild is planned in phases — one at a time, testing after each:
 
 ## Game loop
 
-Spelling earns **gold**, gold builds your **kingdom**, and a prosperous
-kingdom raises your **rank** — Esquire → Knight → Baron → Prince → King/Queen.
+Spelling earns **gold**, gold clears land and builds your **kingdom**, and a
+prosperous kingdom raises your **rank** — Esquire → Knight → Baron → Prince →
+King/Queen.
 
 ```
 spell words correctly  →  gold + XP
-spend gold            →  build buildings (each adds prosperity)
+clear wild land        →  a buildable plot
+build on cleared land  →  prosperity
 prosperity            →  rank rises
+raise the castle      →  region milestone
 claim territories     →  5 kingdoms, each bigger than the last
 ```
 
 | Territory | Buildings | Claim cost |
 |-----------|-----------|------------|
-| Greenwood Village | 6 | free (start here) |
-| Riverstone Crossing | 5 | 500 |
-| Highland Keep | 4 | 1200 |
-| Crystal Caverns | 4 | 2200 |
-| Dragon Peak | 4 | 3600 |
+| Greenwood Village | 7 (incl. Greenwood Castle) | free (start here) |
+| Riverstone Crossing | 6 (incl. Riverstone Castle) | 500 |
+| Highland Keep | 5 (incl. Highland Castle) | 1200 |
+| Crystal Caverns | 5 (incl. Crystal Palace) | 2200 |
+| Dragon Peak | 5 (incl. Dragon Citadel) | 3600 |
 
 Every player's kingdom is stored in `player_progress` and persists across all
 spelling lists — practising a new list never resets your buildings.
+
+### Land starts wild
+
+Every plot begins as **wild land** — covered in trees (or wheat, rocks,
+volcanic scrub, depending on the region). You pay a small `clearCost` to clear
+it, then the larger build cost to put a structure on it. Clearing is
+deliberately cheap so it's always the obvious first move, and it makes the
+kingdom feel carved out of untouched ground.
+
+Plot states: `wild` → `cleared` → `built`. Older saves that stored
+`{ id: true }` migrate to `built` automatically, so an existing kingdom is
+never wiped back to wilderness.
+
+### Castles and region completion
+
+Every territory has exactly one **castle** — its most expensive building and
+the grand capstone. Raising it is a milestone ("🏰 Castle raised!"), and a
+region only reads as **Complete** once every plot is built.
+
+### Royal Tests pay nothing
+
+Tests build mastery and feed the progress report, but award **0 gold and 0
+XP** — points only ever come from real practice, so the kingdom can't be
+farmed by re-testing.
 
 ### Seeing the kingdom
 
@@ -313,6 +340,15 @@ river, crystals in the Caverns.
 
 Finishing a building plays a pop-in animation with gold, forest and sky
 sparkles, and crossing a rank threshold announces the new title.
+
+### Reading voices
+
+Voices are **scored for naturalness** rather than picked by name order:
+neural/premium/enhanced voices rank highest, Android's low-quality "Compact"
+set is pushed down, and offline (local) voices are preferred so replaying a
+word has no lag. A **voice picker** on the practice screen lists voices
+best-first with a preview button, and a **slower** toggle (0.6× speed) is
+available both from the picker and as a one-tap 🐢 button while spelling.
 
 ### Adaptive learning
 

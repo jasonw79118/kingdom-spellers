@@ -12,9 +12,9 @@ import Avatar from "../components/Avatar";
 import ProgressBar from "../components/ProgressBar";
 import StatPill from "../components/StatPill";
 import KingdomScene from "../components/kingdom/KingdomScene";
-import { BuildingArt, buildingSize } from "../components/kingdom/buildingArt";
+import { BuildingArt, buildingSize, LandArt } from "../components/kingdom/buildingArt";
 import {
-  KINGDOMS, TERRITORY_CLAIM_COST, RANKS,
+  KINGDOMS, TERRITORY_CLAIM_COST, RANKS, PLOT, plotState, isRegionComplete, castleBuilt,
   rankForProsperity, rankProgress, prosperityOf,
 } from "../game/kingdom";
 
@@ -51,30 +51,37 @@ function Sparkles() {
   );
 }
 
-// The shop strip: what you can build next, with the current scene above it.
-function BuildOptions({ kingdom, built, gold, busy, onBuild }) {
+// The shop strip: clear or build a plot, with the current scene above it.
+function BuildOptions({ kingdom, built, gold, busy, onClear, onBuild }) {
   return (
     <div className="ks-grid" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(230px, 1fr))" }}>
       {kingdom.buildings.map((b) => {
-        const done = Boolean(built[b.id]);
-        const affordable = gold >= b.cost;
+        const state = plotState(built, b.id);
         const size = buildingSize(b.id);
+        const affordable = gold >= (state === PLOT.WILD ? b.clearCost : b.cost);
         return (
           <button
             key={b.id}
             type="button"
             className="card-flat"
-            onClick={() => !done && onBuild(b)}
-            disabled={done || busy}
-            aria-label={done ? `${b.name} built` : `Build ${b.name} for ${b.cost} gold`}
+            onClick={() => {
+              if (state === PLOT.WILD) onClear(b);
+              else if (state === PLOT.CLEARED) onBuild(b);
+            }}
+            disabled={state === PLOT.BUILT || busy}
+            aria-label={
+              state === PLOT.BUILT ? `${b.name} built`
+              : state === PLOT.WILD ? `Clear land for ${b.name}, ${b.clearCost} gold`
+              : `Build ${b.name} for ${b.cost} gold`
+            }
             style={{
               display: "flex",
               alignItems: "center",
               gap: 12,
               textAlign: "left",
-              cursor: done ? "default" : affordable ? "pointer" : "not-allowed",
-              opacity: done ? 0.75 : affordable ? 1 : 0.62,
-              border: done ? "2px solid var(--forest)" : "2px solid transparent",
+              cursor: state === PLOT.BUILT ? "default" : affordable ? "pointer" : "not-allowed",
+              opacity: state === PLOT.BUILT ? 0.75 : affordable ? 1 : 0.62,
+              border: state === PLOT.BUILT ? "2px solid var(--forest)" : "2px solid transparent",
               position: "relative",
             }}
           >
@@ -89,16 +96,31 @@ function BuildOptions({ kingdom, built, gold, busy, onBuild }) {
                 overflow: "hidden",
               }}
             >
-              <div style={{ transform: `scale(${Math.min(1, 62 / size.h)})`, transformOrigin: "bottom center" }}>
-                <BuildingArt id={b.id} />
+              <div style={{ transform: `scale(${Math.min(1, 58 / size.h)})`, transformOrigin: "bottom center" }}>
+                {state === PLOT.BUILT ? (
+                  <BuildingArt id={b.id} />
+                ) : (
+                  <LandArt state={state} glyph={kingdom.wild} />
+                )}
               </div>
             </div>
             <div style={{ minWidth: 0 }}>
-              <div style={{ fontWeight: 700, fontSize: "0.95rem" }}>{b.name}</div>
-              {done ? (
+              <div style={{ fontWeight: 700, fontSize: "0.95rem" }}>
+                {b.name}
+                {b.castle && (
+                  <span className="badge badge-gold" style={{ marginLeft: 6, fontSize: "0.62rem" }}>Castle</span>
+                )}
+              </div>
+              {state === PLOT.BUILT ? (
                 <span className="badge badge-forest" style={{ marginTop: 4 }}>Built ✓</span>
+              ) : state === PLOT.WILD ? (
+                <div className="ks-row-wrap" style={{ gap: 6, marginTop: 4 }}>
+                  <span className="badge">🌳 Wild</span>
+                  <span className="badge badge-gold">Clear {b.clearCost} 🪙</span>
+                </div>
               ) : (
                 <div className="ks-row-wrap" style={{ gap: 6, marginTop: 4 }}>
+                  <span className="badge badge-forest">Cleared</span>
                   <span className="badge badge-gold">{b.cost} 🪙</span>
                   <span className="badge">+{b.prosperity}</span>
                 </div>
@@ -146,6 +168,16 @@ export default function KingdomPage() {
     load();
   }, [load]);
 
+  // plotState() itself understands the older `{ id: true }` format and maps it
+  // to BUILT, so existing kingdoms keep their buildings and gain wild land.
+  // Computed without a hook so it can sit above the early returns below.
+  const built = (() => {
+    const raw = progress?.buildings || {};
+    const out = {};
+    for (const id of Object.keys(raw)) out[id] = plotState(raw, id);
+    return out;
+  })();
+
   if (loading) return <p className="ks-muted">Loading kingdom…</p>;
   if (!player || !progress) {
     return (
@@ -158,9 +190,8 @@ export default function KingdomPage() {
     );
   }
 
-  const built = progress.buildings || {};
-  const builtIds = Object.keys(built).filter((k) => built[k]);
-  const prosperity = prosperityOf(builtIds);
+
+  const prosperity = prosperityOf(Object.keys(built).filter((k) => built[k] === PLOT.BUILT));
   const gold = player.coins || 0;
   const unlockedCount = (progress.unlocked_kingdoms || [1]).length;
   const rank = rankForProsperity(prosperity, player.avatar?.base);
@@ -181,21 +212,25 @@ export default function KingdomPage() {
 
   const build = async (building) => {
     if (busy) return;
+    if (plotState(built, building.id) !== PLOT.CLEARED) {
+      flash(`Clear the land first before building the ${building.name}.`);
+      return;
+    }
     if (gold < building.cost) {
       flash(`You need ${building.cost - gold} more gold for the ${building.name}.`);
       return;
     }
     setBusy(true);
     try {
-      const nextBuilt = { ...built, [building.id]: true };
+      const nextBuilt = { ...built, [building.id]: PLOT.BUILT };
       await backend.profiles.update(playerId, { coins: gold - building.cost });
       await saveProgress(nextBuilt, progress.unlocked_kingdoms);
       const p = await backend.profiles.list();
       const updated = p.find((x) => x.id === playerId) || player;
 
       // Rank-up callout if this build crossed a threshold.
-      const before = prosperityOf(Object.keys(built).filter((k) => built[k]));
-      const after = prosperityOf(Object.keys(nextBuilt).filter((k) => nextBuilt[k]));
+      const before = prosperityOf(Object.keys(built).filter((k) => built[k] === PLOT.BUILT));
+      const after = prosperityOf(Object.keys(nextBuilt).filter((k) => nextBuilt[k] === PLOT.BUILT));
       const prevRank = rankForProsperity(before, updated.avatar?.base);
       const newRank = rankForProsperity(after, updated.avatar?.base);
 
@@ -206,6 +241,8 @@ export default function KingdomPage() {
 
       if (newRank.title !== prevRank.title) {
         flash(`${newRank.icon} ${building.name} built — you are now a ${newRank.title}!`);
+      } else if (building.castle) {
+        flash(`🏰 ${kingdomById(building)?.name || "Your region"} is COMPLETE!`);
       } else {
         flash(`${building.name} built! +${building.prosperity} prosperity`);
       }
@@ -216,6 +253,36 @@ export default function KingdomPage() {
       setBusy(false);
     }
   };
+
+  // Clear wild land so a structure can be built on it.
+  const clearLand = async (building) => {
+    if (busy) return;
+    if (plotState(built, building.id) !== PLOT.WILD) return;
+    if (gold < building.clearCost) {
+      flash(`You need ${building.clearCost - gold} more gold to clear that land.`);
+      return;
+    }
+    setBusy(true);
+    try {
+      const nextBuilt = { ...built, [building.id]: PLOT.CLEARED };
+      await backend.profiles.update(playerId, { coins: gold - building.clearCost });
+      await saveProgress(nextBuilt, progress.unlocked_kingdoms);
+      const p = await backend.profiles.list();
+      setPlayer(p.find((x) => x.id === playerId) || player);
+      setCelebrating(building.id);
+      clearTimeout(celebrateTimer.current);
+      celebrateTimer.current = setTimeout(() => setCelebrating(null), 1200);
+      flash(`The land is cleared — you can build the ${building.name} there now.`);
+    } catch (err) {
+      console.error(err);
+      flash("Could not clear that land. Please try again.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  // Which territory does a building belong to?
+  const kingdomById = (b) => KINGDOMS.find((k) => k.buildings.some((x) => x.id === b.id));
 
   const claimTerritory = async (index) => {
     if (busy) return;
@@ -318,9 +385,14 @@ export default function KingdomPage() {
               </div>
               {!unlocked ? (
                 <span className="badge badge-rose">🔒 Locked</span>
+              ) : isRegionComplete(built, kingdom) ? (
+                <span className="badge badge-gold">🏰 Complete</span>
+              ) : castleBuilt(built, kingdom) ? (
+                <span className="badge badge-gold">🏰 Castle raised</span>
               ) : (
                 <span className="badge badge-forest">
-                  {kingdom.buildings.filter((b) => built[b.id]).length}/{kingdom.buildings.length}
+                  {kingdom.buildings.filter((b) => plotState(built, b.id) === PLOT.BUILT).length}/
+                  {kingdom.buildings.length}
                 </span>
               )}
             </div>
@@ -348,17 +420,33 @@ export default function KingdomPage() {
                     justBuilt={celebrating}
                     onSelectPlot={(b) => {
                       setFocus(b.id);
-                      setToast(
-                        gold >= b.cost
-                          ? `${b.name} — ${b.cost} gold. Tap “Build” below to start.`
-                          : `The ${b.name} needs ${b.cost - gold} more gold.`
-                      );
+                      const state = plotState(built, b.id);
+                      if (state === PLOT.WILD) {
+                        setToast(
+                          gold >= b.clearCost
+                            ? `${b.name} — clear the wild land for ${b.clearCost} gold to begin.`
+                            : `Clearing that land needs ${b.clearCost - gold} more gold.`
+                        );
+                      } else {
+                        setToast(
+                          gold >= b.cost
+                            ? `${b.name} — ${b.cost} gold. Tap “Build” below to start.`
+                            : `The ${b.name} needs ${b.cost - gold} more gold.`
+                        );
+                      }
                     }}
                   />
                   {celebrating && <Sparkles />}
                 </div>
                 <div style={{ marginTop: 14 }}>
-                  <BuildOptions kingdom={kingdom} built={built} gold={gold} busy={busy} onBuild={build} />
+                  <BuildOptions
+                    kingdom={kingdom}
+                    built={built}
+                    gold={gold}
+                    busy={busy}
+                    onClear={clearLand}
+                    onBuild={build}
+                  />
                 </div>
               </>
             )}

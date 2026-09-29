@@ -1,49 +1,89 @@
-// Text-to-speech helpers built on the Web Speech API.
-// Every spelling word can be heard: the word, its definition, and an
-// example sentence. A slightly slower "careful" rate is available.
+// Text-to-speech built on the Web Speech API.
+//
+// The goal is a *natural human-sounding* voice, so voices are scored rather
+// than picked by name order:
+//   * neural / premium / enhanced / natural voices score highest
+//   * "Compact" voices (Android's low-quality legacy set) are avoided
+//   * offline (local) voices are preferred — no lag when replaying a word
+//   * a parent/child can override the choice from the voice picker
+//
+// Words, definitions and example sentences can all be spoken, each with a
+// normal and a "speak slowly" rate.
 
+const PREF_KEY = "ks2_voice_pref";
 let cachedVoice = null;
+let voiceList = [];
 
-function getSynth() {
-  if (typeof window === "undefined") return null;
-  return window.speechSynthesis || null;
+// Markers that indicate a modern, high-quality (usually neural) voice.
+const PREMIUM = [
+  "natural", "neural", "premium", "enhanced", "high quality", "studio",
+  "samantha", "ava", "allison", "aaron", "nicky", "zoe", "tom",
+  "google us english", "google uk english female", "google uk english male",
+  "microsoft aria", "microsoft jenny", "microsoft guy", "microsoft libby",
+  "microsoft zira", "microsoft david", "microsoft mark",
+];
+
+// Voices that sound robotic or are the low-quality legacy Android set.
+const LOW_QUALITY = ["compact", "eloquence", "legacy"];
+
+function scoreVoice(v) {
+  const name = (v.name || "").toLowerCase();
+  const lang = (v.lang || "").toLowerCase();
+  let score = 0;
+
+  if (lang.startsWith("en")) score += 2;
+  if (lang.startsWith("en-us")) score += 1;
+  if (PREMIUM.some((p) => name.includes(p))) score += 6;
+  if (LOW_QUALITY.some((q) => name.includes(q))) score -= 8;
+  // Locally installed voices have no network latency.
+  if (v.localService) score += 2;
+  return score;
 }
 
-// Prefer a clear en-US voice; fall back to any English voice.
-export function pickVoice() {
-  const synth = getSynth();
-  if (!synth) return null;
-  const voices = synth.getVoices() || [];
-  if (!voices.length) return null;
-
-  const enUS = voices.filter((v) => (v.lang || "").toLowerCase().replace("_", "-").startsWith("en-us"));
-  const enAny = voices.filter((v) => (v.lang || "").toLowerCase().replace("_", "-").startsWith("en"));
-  const pool = enUS.length ? enUS : enAny.length ? enAny : voices;
-
-  const preferred = [
-    "google us english",
-    "samantha",
-    "alex",
-    "zira",
-    "microsoft david",
-    "microsoft aria",
-    "google uk english male",
-  ];
-  for (const name of preferred) {
-    const found = pool.find((v) => (v.name || "").toLowerCase().includes(name));
-    if (found) return found;
-  }
-  return pool[0] || null;
+// All English voices, best first.
+export function rankedVoices() {
+  const synth = typeof window !== "undefined" ? window.speechSynthesis : null;
+  if (!synth) return [];
+  voiceList = synth
+    .getVoices()
+    .filter((v) => (v.lang || "").toLowerCase().startsWith("en"));
+  return voiceList.slice().sort((a, b) => scoreVoice(b) - scoreVoice(a));
 }
 
+// The voice a saved preference points at, else the highest scoring.
 export function getVoice() {
-  if (!cachedVoice) cachedVoice = pickVoice();
+  const synth = typeof window !== "undefined" ? window.speechSynthesis : null;
+  if (!synth) return null;
+
+  const preferred = localStorage.getItem(PREF_KEY);
+  const voices = rankedVoices();
+  if (voices.length) {
+    if (preferred) {
+      const found = voices.find((v) => v.voiceURI === preferred || v.name === preferred);
+      if (found) {
+        cachedVoice = found;
+        return found;
+      }
+    }
+    cachedVoice = voices[0];
+  }
   return cachedVoice;
 }
 
-// Warm the voice list (important on iOS where voices load async).
+export function setVoicePref(voiceURI) {
+  if (voiceURI) localStorage.setItem(PREF_KEY, voiceURI);
+  else localStorage.removeItem(PREF_KEY);
+  cachedVoice = null;
+  getVoice();
+}
+
+export function getVoicePref() {
+  return localStorage.getItem(PREF_KEY) || "";
+}
+
+// Warm the voice list. iOS populates it asynchronously.
 export function warmVoices() {
-  const synth = getSynth();
+  const synth = typeof window !== "undefined" ? window.speechSynthesis : null;
   if (!synth) return;
   synth.getVoices();
   if (typeof synth.addEventListener === "function") {
@@ -55,17 +95,16 @@ export function warmVoices() {
 }
 
 export function stopSpeaking() {
-  const synth = getSynth();
+  const synth = typeof window !== "undefined" ? window.speechSynthesis : null;
   if (synth) synth.cancel();
 }
 
-// Core speak function. options: { rate, pitch, onEnd }
 export function speak(text, options = {}) {
-  const synth = getSynth();
+  const synth = typeof window !== "undefined" ? window.speechSynthesis : null;
   if (!synth || !text) return;
   synth.cancel();
 
-  const utterance = new SpeechSynthesisUtterance(text);
+  const utterance = new SpeechSynthesisUtterance(String(text));
   const voice = getVoice();
   if (voice) utterance.voice = voice;
   utterance.lang = voice?.lang || "en-US";
@@ -74,26 +113,28 @@ export function speak(text, options = {}) {
   utterance.volume = 1;
   if (options.onEnd) utterance.onend = options.onEnd;
 
-  // Small delay helps iOS after cancel().
+  // iOS needs a moment after cancel() before it will speak.
   setTimeout(() => {
     try {
       synth.speak(utterance);
     } catch {
-      // fail silently on iOS restrictions
+      /* fail silently on iOS restrictions */
     }
   }, 20);
 }
 
-// Speak a word clearly (slightly slower, a touch lower pitch).
-export function speakWord(word, options = {}) {
-  speak(word, { rate: 0.9, pitch: 0.95, ...options });
+// Speaking rates: normal reads a word cleanly; "slow" is for children still
+// learning to sound words out.
+export const RATE = { normal: 0.95, slow: 0.6 };
+
+export function speakWord(word, { slow = false } = {}) {
+  speak(word, { rate: slow ? RATE.slow : RATE.normal, pitch: 1.0 });
 }
 
-// Speak at a careful, easy-to-follow pace (for definitions/sentences).
 export function speakSlow(text, options = {}) {
-  speak(text, { rate: 0.8, pitch: 1.0, ...options });
+  speak(text, { rate: RATE.slow, pitch: 1.0, ...options });
 }
 
 export function speakSentence(text, options = {}) {
-  speak(text, { rate: 0.95, pitch: 1.0, ...options });
+  speak(text, { rate: 0.9, pitch: 1.0, ...options });
 }

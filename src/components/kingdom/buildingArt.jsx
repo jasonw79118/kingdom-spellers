@@ -409,6 +409,75 @@ const DragonThrone = () => (
   </g>
 );
 
+// --- castles (the capstone of every territory) ------------------------------
+
+// A grand, unmistakable castle. `accent` tints the roofs and banners so each
+// territory's castle still feels like it belongs to its region.
+const CastleArt = ({ roof, roofDark, accent, glow }) => (
+  <g>
+    {/* curtain wall */}
+    <Wall x={0} y={62} w={120} h={26} fill={C.stone} stroke={C.stoneDark} />
+    <Crenels x={0} y={62} w={120} h={9} />
+    {/* corner towers */}
+    <Wall x={6} y={26} w={24} h={62} fill={C.stoneLight} stroke={C.stoneDark} />
+    <Crenels x={6} y={26} w={24} />
+    <Wall x={90} y={26} w={24} h={62} fill={C.stoneLight} stroke={C.stoneDark} />
+    <Crenels x={90} y={26} w={24} />
+    {/* conical roofs */}
+    <path d="M4 28 L18 2 L32 28 Z" fill={roof} stroke={roofDark} strokeWidth="2" strokeLinejoin="round" />
+    <path d="M88 28 L102 2 L116 28 Z" fill={roof} stroke={roofDark} strokeWidth="2" strokeLinejoin="round" />
+    {/* central keep */}
+    <Wall x={32} y={30} w={56} h={58} fill={C.stoneLight} stroke={C.stoneDark} />
+    <Crenels x={32} y={30} w={56} />
+    <path d="M28 32 L60 0 L92 32 Z" fill={roof} stroke={roofDark} strokeWidth="2" strokeLinejoin="round" />
+    {/* gate */}
+    <path d="M50 88 L50 68 Q60 56 70 68 L70 88 Z" fill={C.woodDark} stroke="#6b3f1c" strokeWidth="2" />
+    <line x1={52} y1={72} x2={68} y2={84} stroke="#6b3f1c" strokeWidth="1.5" />
+    <line x1={68} y1={72} x2={52} y2={84} stroke="#6b3f1c" strokeWidth="1.5" />
+    {/* windows */}
+    <Window x={38} y={40} size={10} lit />
+    <Window x={72} y={40} size={10} lit />
+    <Window x={12} y={36} size={9} lit />
+    <Window x={98} y={36} size={9} lit />
+    <Window x={38} y={58} size={10} />
+    <Window x={72} y={58} size={10} />
+    {/* banner + finial */}
+    <Flag x={60} y={2} h={22} fill={accent} />
+    <circle cx={60} cy={-4} r={4} fill={glow || C.glow} />
+  </g>
+);
+
+const GreenwoodCastle = () => <CastleArt roof={C.roofGreen} roofDark="#3f6a37" accent={C.cloth} />;
+const RiverstoneCastle = () => <CastleArt roof={C.roofBlue} roofDark="#3f5f80" accent="#7fb0c9" />;
+const HighlandCastle = () => <CastleArt roof={C.stoneDark} roofDark="#6b6455" accent={C.cloth} />;
+const CrystalCastle = () => <CastleArt roof={C.crystal} roofDark="#8f7fc0" accent={C.crystalLight} glow={C.crystalLight} />;
+const DragonCastle = () => <CastleArt roof={C.roofRed} roofDark="#9c3f2c" accent="#c95a5a" />;
+
+// --- wild land (uncleared plots) --------------------------------------------
+
+// A plot still covered in overgrowth: trees, rocks, scrub. Drawn a little
+// larger and messier than a building so it reads as "not ready yet".
+const WildLand = ({ glyph, tint }) => (
+  <g>
+    <ellipse cx={46} cy={22} rx={42} ry={16} fill={tint} opacity="0.35" />
+    <text x={16} y={-6} fontSize={30} textAnchor="middle">{glyph}</text>
+    <text x={46} y={-12} fontSize={38} textAnchor="middle">{glyph}</text>
+    <text x={76} y={-4} fontSize={27} textAnchor="middle">{glyph}</text>
+    <path d="M4 0 q6 -12 12 0" stroke={tint} strokeWidth="3" fill="none" strokeLinecap="round" />
+    <path d="M66 2 q6 -10 12 0" stroke={tint} strokeWidth="3" fill="none" strokeLinecap="round" />
+  </g>
+);
+
+// A cleared plot: bare, level ground with a surveyor's mark.
+const ClearedLand = () => (
+  <g>
+    <ellipse cx={46} cy={2} rx={40} ry={11} fill="#8a6a4a" opacity="0.30" />
+    <ellipse cx={46} cy={-2} rx={40} ry={11} fill="#a5825a" opacity="0.45" />
+    <path d="M22 -6 L46 -18 L70 -6" stroke="#7a5a3a" strokeWidth="3" fill="none" strokeLinejoin="round" opacity="0.8" />
+    <line x1={46} y1={-18} x2={46} y2={4} stroke="#7a5a3a" strokeWidth="2.5" />
+  </g>
+);
+
 // --- registry -----------------------------------------------------------------
 // Sizes are the footprint each building occupies in scene units.
 export const BUILDING_ART = {
@@ -419,27 +488,32 @@ export const BUILDING_ART = {
   market: { w: 88, h: 80, Art: Market },
   schoolhouse: { w: 88, h: 80, Art: Schoolhouse },
   townhall: { w: 112, h: 86, Art: Townhall },
+  greenwoodcastle: { w: 120, h: 92, Art: GreenwoodCastle },
   // Riverstone Crossing
   dock: { w: 96, h: 84, Art: Dock },
   mill: { w: 86, h: 80, Art: Mill },
   bridge: { w: 96, h: 84, Art: Bridge },
   fishery: { w: 84, h: 80, Art: Fishery },
   inn: { w: 100, h: 84, Art: Inn },
+  rivercastle: { w: 120, h: 92, Art: RiverstoneCastle },
   // Highland Keep
   watchtower: { w: 60, h: 84, Art: Watchtower },
   barracks: { w: 94, h: 82, Art: Barracks },
   chapel: { w: 84, h: 86, Art: Chapel },
   greatkeep: { w: 116, h: 88, Art: GreatKeep },
+  highlandcastle: { w: 120, h: 92, Art: HighlandCastle },
   // Crystal Caverns
   mine: { w: 70, h: 82, Art: Mine },
   gemcutter: { w: 94, h: 80, Art: GemCuttersHall },
   bridgeoflight: { w: 100, h: 78, Art: BridgeOfLight },
   cathedral: { w: 92, h: 88, Art: CrystalCathedral },
+  crystalcastle: { w: 120, h: 92, Art: CrystalCastle },
   // Dragon Peak
   camp: { w: 86, h: 82, Art: Camp },
   lair: { w: 74, h: 82, Art: DragonLair },
   observatory: { w: 84, h: 80, Art: Observatory },
   throne: { w: 64, h: 88, Art: DragonThrone },
+  dragoncastle: { w: 120, h: 92, Art: DragonCastle },
 };
 
 export function BuildingArt({ id }) {
@@ -463,4 +537,15 @@ export function BuildingArt({ id }) {
 export function buildingSize(id) {
   const e = BUILDING_ART[id];
   return e ? { w: e.w, h: e.h } : { w: 80, h: 80 };
+}
+
+// Wild / cleared land art, sized to match the plot it sits on.
+export function LandArt({ state, glyph = "🌳", tint = "#4f8558" }) {
+  if (state === "built") return null;
+  const w = 92, h = 56;
+  return (
+    <svg viewBox={`0 0 ${w} ${h}`} width={w} height={h} aria-hidden="true" focusable="false" style={{ overflow: "visible" }}>
+      {state === "cleared" ? <ClearedLand /> : <WildLand glyph={glyph} tint={tint} />}
+    </svg>
+  );
 }
