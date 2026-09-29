@@ -33,6 +33,21 @@ export default function ListEditorPage() {
   const [pasteValue, setPasteValue] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [players, setPlayers] = useState([]);
+  const [playerId, setPlayerId] = useState("");
+
+  // Which child is this list for? Every list must belong to a player, or it
+  // will not show up when that child plays.
+  useEffect(() => {
+    if (isEditing) return;
+    backend.profiles
+      .list()
+      .then((list) => {
+        setPlayers(list);
+        if (list.length && !playerId) setPlayerId(list[0].id);
+      })
+      .catch(() => setPlayers([]));
+  }, [isEditing, playerId]);
 
   // Load existing list when editing.
   useEffect(() => {
@@ -102,9 +117,12 @@ export default function ListEditorPage() {
     setWords((prev) => prev.map((w) => (w.id === id ? { ...w, ...fields } : w)));
   };
 
-  // Look up dictionary definitions for all words before review.
+  // Look up dictionary definitions for all words before review. Definitions
+  // are a convenience, not a requirement — if the lookup fails we still go
+  // forward so the parent can type them in, rather than dead-ending here.
   const handleReview = async () => {
     setBusy(true);
+    setError("");
     try {
       const dict = await backend.dictionary.lookup(words.map((w) => w.word));
       setWords((prev) =>
@@ -122,7 +140,8 @@ export default function ListEditorPage() {
       setStep("review");
     } catch (err) {
       console.error(err);
-      setError("Could not load definitions.");
+      setStep("review");
+      setError("Could not look up definitions automatically — you can type them in below.");
     } finally {
       setBusy(false);
     }
@@ -135,6 +154,7 @@ export default function ListEditorPage() {
       let id = listId;
       if (!id) {
         const created = await backend.lists.create({
+          player_id: playerId,
           title: title.trim() || "Untitled List",
           source: "manual",
         });
@@ -183,6 +203,22 @@ export default function ListEditorPage() {
                 maxLength={60}
               />
             </div>
+
+            {players.length > 1 && (
+              <div className="field" style={{ marginBottom: 0 }}>
+                <label className="label" htmlFor="list-player">Who is this list for?</label>
+                <select
+                  id="list-player"
+                  className="select"
+                  value={playerId}
+                  onChange={(e) => setPlayerId(e.target.value)}
+                >
+                  {players.map((p) => (
+                    <option key={p.id} value={p.id}>{p.name}</option>
+                  ))}
+                </select>
+              </div>
+            )}
           </div>
 
           {/* Type words */}

@@ -156,8 +156,32 @@ function levelForScore(m) {
 
 let seededPromise = null;
 
-// Seed the shared dictionary + catalogs once per session.
+// Seeding is idempotent but expensive: ~715 create calls (6 achievements +
+// 10 inventory items + 699 dictionary words), and every one that already
+// exists returns a 409. Running that on every page load made the app feel
+// broken — the dictionary lookup awaited it, so saving a spelling list appeared
+// to hang for a minute. The flag makes it a one-time cost per browser, and
+// lookups no longer wait on it at all.
+const SEED_FLAG = `ks2_seeded_${DB_ID}`;
+
+function hasSeeded() {
+  try {
+    return localStorage.getItem(SEED_FLAG) === "1";
+  } catch {
+    return false; // private mode: fall back to the in-memory promise
+  }
+}
+
+function markSeeded() {
+  try {
+    localStorage.setItem(SEED_FLAG, "1");
+  } catch { /* private mode — the in-memory promise still covers this load */ }
+}
+
+// Fill in reference data (achievements, inventory, the dictionary). Never
+// throws, and is a no-op after the first run.
 function ensureSeeded() {
+  if (hasSeeded()) return Promise.resolve();
   if (!seededPromise) {
     seededPromise = (async () => {
       const db = getDatabases();
@@ -211,6 +235,7 @@ function ensureSeeded() {
           });
         } catch { /* already exists */ }
       }
+      markSeeded();
     })().catch((err) => {
       // Reset so a later attempt can retry.
       seededPromise = null;
@@ -218,6 +243,20 @@ function ensureSeeded() {
     });
   }
   return seededPromise;
+}
+
+// Reject rather than hang, so a stalled request surfaces as a normal error
+// instead of an interface that spins forever.
+const LOOKUP_TIMEOUT_MS = 15000;
+
+function withTimeout(promise, ms, message) {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error(message)), ms);
+    Promise.resolve(promise).then(
+      (v) => { clearTimeout(timer); resolve(v); },
+      (e) => { clearTimeout(timer); reject(e); }
+    );
+  });
 }
 
 // --- backend -----------------------------------------------------------------
@@ -407,15 +446,31 @@ export function createAppwriteBackend() {
       },
 
       async create(d) {
+        // Ownership always comes from the signed-in session, never from the
+        // caller. parentId is a required column, so trusting the caller meant
+        // any page that forgot to pass it produced a save that silently hung.
+        const me = requireParent();
+        // A list belongs to a child. If a player was given, verify it is
+        // actually this family's, then fall back to the parent's only child.
+        let playerId = d.player_id || "";
+        if (playerId) {
+          await assertOwnsPlayer(db(), playerId);
+        } else {
+          const { documents } = await db().listDocuments(
+            DB_ID, COLLECTIONS.playerProfiles, [Query.equal("parentId", me)], 1
+          );
+          if (documents.length) playerId = documents[0].$id;
+        }
+
         const doc = await db().createDocument(
           DB_ID, COLLECTIONS.spellingLists, ID.unique(),
           {
-            parentId: d.parent_id,
-            playerId: d.player_id || "",
-            title: d.title,
+            parentId: me,
+            playerId,
+            title: d.title || "Untitled List",
             source: d.source || "manual",
           },
-          ownerPerms(d.parent_id)
+          ownerPerms(me)
         );
         return mapList(doc);
       },
@@ -511,19 +566,46 @@ export function createAppwriteBackend() {
 
     dictionary: {
       async lookup(words) {
-        await ensureSeeded();
+        // Deliberately does NOT await ensureSeeded(). A lookup is on the
+        // critical path for saving a list, and seeding is bulk reference data
+        // that does not need to be present to answer a query. Kick it off in
+        // the background so the dictionary fills in without blocking anyone.
+        ensureSeeded().catch(() => {});
         const normalized = [...new Set(words.map(normalizeWord))];
         const out = {};
         // Array value = single "in" query (separate equal() clauses AND together).
         for (let i = 0; i < normalized.length; i += 50) {
           const chunk = normalized.slice(i, i + 50);
-          const { documents } = await db().listDocuments(
-            DB_ID, COLLECTIONS.dictionaryWords,
-            [Query.equal("normalizedWord", chunk)], 100
+          // Guard against a hung request: a lookup that never settles used to
+          // leave the Save button spinning forever.
+          const { documents } = await withTimeout(
+            db().listDocuments(
+              DB_ID, COLLECTIONS.dictionaryWords,
+              [Query.equal("normalizedWord", chunk)], 100
+            ),
+            LOOKUP_TIMEOUT_MS,
+            "Dictionary lookup timed out"
           );
           for (const d of documents) {
             const m = mapDict(d);
             out[m.normalized_word] = m;
+          }
+        }
+        // Words the dataset doesn't cover still get a usable definition from
+        // the built-in fallback, so a list never saves with blank definitions.
+        // (A parent can always edit it afterwards — see the list editor.)
+        for (const n of normalized) {
+          if (out[n]) continue;
+          const fb = fallbackDefinition(n);
+          if (fb) {
+            out[n] = {
+              normalized_word: n,
+              word: n,
+              kid_definition: fb,
+              definition: fb,
+              example_sentence: "",
+              part_of_speech: "",
+            };
           }
         }
         return out;

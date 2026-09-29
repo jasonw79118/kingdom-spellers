@@ -194,11 +194,16 @@ const localLists = {
 
   async create(data) {
     const lists = read("spelling_lists");
+    // Mirrors the Appwrite backend: ownership comes from the session, and a
+    // missing player falls back to the parent's first child so a list is never
+    // orphaned (which would hide it from every player's practice screen).
+    const me = (await this.getCurrentUser())?.id;
+    const players = read("player_profiles").filter((p) => p.parent_id === me);
     const list = {
       id: uid(),
-      parent_id: data.parent_id,
-      player_id: data.player_id || null,
-      title: data.title,
+      parent_id: me,
+      player_id: data.player_id || players[0]?.id || null,
+      title: data.title || "Untitled List",
       source: data.source || "manual",
       created_at: new Date().toISOString(),
     };

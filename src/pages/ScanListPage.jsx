@@ -19,6 +19,20 @@ export default function ScanListPage() {
   const [title, setTitle] = useState("");
   const [candidates, setCandidates] = useState([]); // { word, checked }
   const [rawText, setRawText] = useState("");
+  const [players, setPlayers] = useState([]);
+  const [playerId, setPlayerId] = useState("");
+
+  // Which child is this list for? Every list must belong to a player, or it
+  // will not show up when that child plays.
+  useEffect(() => {
+    backend.profiles
+      .list()
+      .then((list) => {
+        setPlayers(list);
+        if (list.length && !playerId) setPlayerId(list[0].id);
+      })
+      .catch(() => setPlayers([]));
+  }, [playerId]);
 
   useEffect(() => {
     return () => {
@@ -83,6 +97,7 @@ export default function ScanListPage() {
     setProcessing(true);
     try {
       const created = await backend.lists.create({
+        player_id: playerId,
         title: title.trim() || "Scanned List",
         source: "ocr",
       });
@@ -218,6 +233,22 @@ export default function ScanListPage() {
                 maxLength={60}
               />
             </div>
+
+            {players.length > 1 && (
+              <div className="field" style={{ marginBottom: 0 }}>
+                <label className="label" htmlFor="scan-player">Who is this list for?</label>
+                <select
+                  id="scan-player"
+                  className="select"
+                  value={playerId}
+                  onChange={(e) => setPlayerId(e.target.value)}
+                >
+                  {players.map((p) => (
+                    <option key={p.id} value={p.id}>{p.name}</option>
+                  ))}
+                </select>
+              </div>
+            )}
           </div>
 
           <div className="card ks-stack">
