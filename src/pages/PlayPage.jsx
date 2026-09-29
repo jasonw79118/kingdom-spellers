@@ -10,8 +10,7 @@ import Avatar from "../components/Avatar";
 import { buildPracticeSet, masteryLevel } from "../game/mastery";
 import { createSession, buildPuzzle, gradeAnswer, advanceSession, sessionSummary, MODES } from "../game/practice";
 import { goldForWord, REWARDS, XP_PER_WORD } from "../game/kingdom";
-import { speakWord, speakSlow, stopSpeaking, prefetch } from "../lib/speech";
-import { prefersSlow, setPrefersSlow } from "../components/VoicePicker";
+import { speakWord, speakSlow, stopSpeaking, prefetch, getSlowPref, setSlowPref } from "../lib/speech";
 import VoicePicker from "../components/VoicePicker";
 import { normalizeWord, shuffleArray } from "../lib/utils";
 
@@ -329,8 +328,9 @@ export default function PlayPage() {
               </button>
             </div>
             <p className="ks-small ks-muted" style={{ margin: 0 }}>
-              Practise adapts to you: words you find hard come back more often.
-              The Royal Test has no hints and gives bonus gold.
+              Practise adapts to you: words you find hard come back more often,
+              and earns you gold. The Royal Test is a real test — no hints, and
+              no gold either, so try it when you feel ready.
             </p>
           </div>
         )}
@@ -403,7 +403,7 @@ export default function PlayPage() {
             <button
               type="button"
               className="btn btn-ghost btn-sm"
-              onClick={() => speakWord(currentWord.word, { slow: prefersSlow() })}
+              onClick={() => speakWord(currentWord.word)}
             >
               🔊 Hear word
             </button>
@@ -411,8 +411,8 @@ export default function PlayPage() {
               type="button"
               className="btn btn-ghost btn-sm"
               onClick={() => {
-                const next = !prefersSlow();
-                setPrefersSlow(next);
+                const next = !getSlowPref();
+                setSlowPref(next);
                 speakWord(currentWord.word, { slow: next });
               }}
             >

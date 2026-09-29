@@ -36,13 +36,6 @@ import {
   breakerReason,
 } from "../lib/speech";
 
-export function prefersSlow() {
-  return getSlowPref();
-}
-export function setPrefersSlow(on) {
-  setSlowPref(on);
-}
-
 const SERVICES = [
   {
     id: CLOUD_SERVICES.ELEVENLABS,
