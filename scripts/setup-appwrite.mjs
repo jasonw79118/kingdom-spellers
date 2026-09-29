@@ -1,0 +1,361 @@
+// One-time Appwrite schema setup.
+//
+// Run this to create the database, all tables, their columns and indexes:
+//
+//   npm run setup:appwrite
+//
+// Requires in a .env file (or set as environment variables):
+//   APPWRITE_API_KEY   — an API key with full scope
+//   APPWRITE_ENDPOINT  — https://fra.cloud.appwrite.io/v1
+//   APPWRITE_PROJECT_ID
+//
+// Get the API key from: Appwrite Console → Project → Settings → API Keys.
+//
+// NOTE: this uses the **TablesDB** service (Appwrite 2.x's current API).
+// Appwrite 2.x grants API-key scopes for TablesDB ("tables", "columns",
+// "indexes", "rows"), not for the older Databases service ("collections",
+// "attributes"). Using the legacy Databases service here fails with
+// "missing scopes (collections.write)" even when the console shows every
+// scope selected — so we use TablesDB, which is the same underlying storage.
+//
+// The script is idempotent: re-running it skips anything that already exists.
+
+import { Client, TablesDB, Permission, Role } from "node-appwrite";
+import { readFileSync, existsSync } from "node:fs";
+
+// --- config -----------------------------------------------------------------
+const ENV = {};
+if (existsSync(".env")) {
+  for (const line of readFileSync(".env", "utf8").split("\n")) {
+    const m = line.match(/^\s*([A-Z0-9_]+)\s*=\s*(.*)\s*$/);
+    if (m) ENV[m[1]] = m[2].replace(/^["']|["']$/g, "");
+  }
+}
+
+const ENDPOINT = process.env.APPWRITE_ENDPOINT || ENV.APPWRITE_ENDPOINT;
+const PROJECT_ID = process.env.APPWRITE_PROJECT_ID || ENV.APPWRITE_PROJECT_ID;
+const API_KEY = process.env.APPWRITE_API_KEY || ENV.APPWRITE_API_KEY;
+const DB_ID = process.env.APPWRITE_DB_ID || ENV.APPWRITE_DB_ID || "kingdom";
+
+if (!ENDPOINT || !PROJECT_ID || !API_KEY) {
+  console.error(
+    "\nMissing configuration. Add these to a .env file:\n" +
+      "  APPWRITE_ENDPOINT=https://fra.cloud.appwrite.io/v1\n" +
+      "  APPWRITE_PROJECT_ID=6abacd6a001d4161641f\n" +
+      "  APPWRITE_API_KEY=<your api key>\n"
+  );
+  process.exit(1);
+}
+
+const client = new Client()
+  .setEndpoint(ENDPOINT)
+  .setProject(PROJECT_ID)
+  .setKey(API_KEY);
+
+const db = new TablesDB(client);
+
+const str = (key, size, required = false, def = undefined) => ({
+  key, type: "string", size, required, ...(def !== undefined ? { default: def } : {}),
+});
+const int = (key, required = false, def = undefined) => ({
+  key, type: "integer", required, ...(def !== undefined ? { default: def } : {}),
+});
+const float = (key, required = false, def = undefined) => ({
+  key, type: "double", required, ...(def !== undefined ? { default: def } : {}),
+});
+const bool = (key, required = false, def = undefined) => ({
+  key, type: "boolean", required, ...(def !== undefined ? { default: def } : {}),
+});
+const json = (key, required = false) => ({ key, type: "string", size: 20000, required });
+const datetime = (key) => ({ key, type: "datetime", required: false });
+
+// Table definitions: columns + indexes.
+// Security is set per-document at creation time (owner-only) by the app, so
+// table row security stays open to signed-in users.
+const COLLECTIONS = {
+  profiles: {
+    attributes: [str("displayName", 100)],
+    indexes: [],
+  },
+  player_profiles: {
+    attributes: [
+      str("parentId", 64, true),
+      str("name", 40, true),
+      json("avatar"),
+      int("gradeLevel", false, 1),
+      str("difficulty", 20, false, "medium"),
+      int("xp", false, 0),
+      int("coins", false, 0),
+      int("streak", false, 0),
+      str("lastPracticeOn", 20),
+    ],
+    indexes: [
+      { key: "idx_parent", attributes: ["parentId"], orders: ["ASC"] },
+    ],
+  },
+  spelling_lists: {
+    attributes: [
+      str("parentId", 64, true),
+      str("playerId", 64),
+      str("title", 120, true),
+      str("source", 20, false, "manual"),
+    ],
+    indexes: [
+      { key: "idx_parent", attributes: ["parentId"], orders: ["ASC"] },
+      { key: "idx_player", attributes: ["playerId"], orders: ["ASC"] },
+    ],
+  },
+  spelling_words: {
+    attributes: [
+      str("listId", 64, true),
+      str("word", 60, true),
+      str("normalizedWord", 60, true),
+      int("position", false, 0),
+      str("dictionaryWordId", 64),
+    ],
+    indexes: [
+      { key: "idx_list", attributes: ["listId"], orders: ["ASC"] },
+      { key: "idx_list_pos", attributes: ["listId", "position"], orders: ["ASC", "ASC"] },
+    ],
+  },
+  dictionary_words: {
+    attributes: [
+      str("word", 60, true),
+      str("normalizedWord", 60, true),
+      str("definition", 1000),
+      str("kidDefinition", 1000),
+      str("exampleSentence", 1000),
+      str("partOfSpeech", 40),
+      str("pronunciation", 60),
+      str("source", 20, false, "dataset"),
+    ],
+    indexes: [
+      { key: "idx_normalized", attributes: ["normalizedWord"], orders: ["ASC"], unique: true },
+    ],
+  },
+  word_attempts: {
+    attributes: [
+      str("playerId", 64, true),
+      str("word", 60, true),
+      str("listId", 64),
+      str("mode", 30, false, "practice"),
+      bool("correct", true),
+    ],
+    indexes: [
+      { key: "idx_player_word", attributes: ["playerId", "word"], orders: ["ASC", "ASC"] },
+    ],
+  },
+  player_word_mastery: {
+    attributes: [
+      str("playerId", 64, true),
+      str("word", 60, true),
+      int("attempts", false, 0),
+      int("correctAttempts", false, 0),
+      int("incorrectAttempts", false, 0),
+      int("currentStreak", false, 0),
+      float("masteryScore", false, 0),
+      str("masteryLevel", 20, false, "new"),
+      str("lastAttemptOn", 40),
+    ],
+    indexes: [
+      { key: "idx_player_word", attributes: ["playerId", "word"], orders: ["ASC", "ASC"], unique: true },
+    ],
+  },
+  player_progress: {
+    attributes: [
+      str("playerId", 64, true),
+      json("unlockedKingdoms"),
+      int("currentKingdom", false, 1),
+      json("buildings"),
+      json("charactersUnlocked"),
+    ],
+    indexes: [],
+  },
+  achievements: {
+    attributes: [
+      str("key", 40, true),
+      str("title", 80, true),
+      str("description", 200, true),
+      str("icon", 30, false, "star"),
+    ],
+    indexes: [{ key: "idx_key", attributes: ["key"], orders: ["ASC"], unique: true }],
+  },
+  player_achievements: {
+    attributes: [
+      str("playerId", 64, true),
+      str("achievementId", 40, true),
+    ],
+    indexes: [
+      { key: "idx_player", attributes: ["playerId"], orders: ["ASC"] },
+    ],
+  },
+  inventory: {
+    attributes: [
+      str("key", 40, true),
+      str("name", 80, true),
+      str("slot", 30, true),
+      str("rarity", 20, false, "common"),
+    ],
+    indexes: [{ key: "idx_key", attributes: ["key"], orders: ["ASC"], unique: true }],
+  },
+  player_inventory: {
+    attributes: [
+      str("playerId", 64, true),
+      str("itemId", 40, true),
+      bool("equipped", false, false),
+    ],
+    indexes: [
+      { key: "idx_player", attributes: ["playerId"], orders: ["ASC"] },
+    ],
+  },
+};
+
+async function main() {
+  console.log(`Setting up Appwrite project ${PROJECT_ID} at ${ENDPOINT}\n`);
+
+  // 1. Database
+  try {
+    await db.get(DB_ID);
+    console.log(`  ✓ database "${DB_ID}" exists`);
+  } catch {
+    await db.create(DB_ID, "Kingdom Spellers");
+    console.log(`  + created database "${DB_ID}"`);
+  }
+
+  // 2. Tables
+  const failed = new Set();
+  const warned = new Set();
+  const missingScopes = new Set();
+  const noteMissing = (err) => {
+    const m = err?.message?.match(/missing scopes \((.*?)\)/);
+    if (m) for (const s of JSON.parse(m[1])) missingScopes.add(s);
+  };
+  for (const [name, def] of Object.entries(COLLECTIONS)) {
+    let tableId = name;
+    try {
+      await db.getTable(DB_ID, name);
+      console.log(`  ✓ table "${name}" exists`);
+    } catch {
+      try {
+        await db.createTable(DB_ID, name, name, [
+          Permission.read(Role.any()),
+          Permission.create(Role.any()),
+          Permission.update(Role.any()),
+          Permission.delete(Role.any()),
+        ], false);
+        tableId = name;
+        console.log(`  + created table "${name}"`);
+      } catch (err) {
+        if (err.message.includes("already exists")) {
+          console.log(`  ✓ table "${name}" exists`);
+        } else {
+          noteMissing(err);
+          failed.add(`table "${name}"`);
+          console.error(`  ! could not create table "${name}": ${err.message}`);
+          continue;
+        }
+      }
+    }
+
+    // 3. Columns
+    let existing = [];
+    try {
+      const res = await db.listColumns(DB_ID, tableId);
+      existing = res.columns.map((c) => c.key);
+    } catch { /* none yet */ }
+
+    for (const attr of def.attributes) {
+      if (existing.includes(attr.key)) continue;
+      let lastErr = null;
+      // New columns on a populated table must be optional, otherwise
+      // Appwrite rejects the create.
+      const required = def.preexisting?.includes(attr.key) ? false : attr.required;
+      try {
+        if (attr.type === "string") {
+          await db.createStringColumn(DB_ID, tableId, attr.key, attr.size, required, attr.default);
+        } else if (attr.type === "integer") {
+          await db.createIntegerColumn(DB_ID, tableId, attr.key, required, undefined, undefined, attr.default);
+        } else if (attr.type === "double") {
+          await db.createFloatColumn(DB_ID, tableId, attr.key, required, undefined, undefined, attr.default);
+        } else if (attr.type === "boolean") {
+          await db.createBooleanColumn(DB_ID, tableId, attr.key, required, attr.default);
+        } else if (attr.type === "datetime") {
+          await db.createDatetimeColumn(DB_ID, tableId, attr.key, required);
+        }
+      } catch (e) {
+        lastErr = e;
+        noteMissing(e);
+        failed.add(`column ${tableId}.${attr.key}`);
+      }
+      if (lastErr) {
+        console.log(`\n    ! column ${tableId}.${attr.key}: ${lastErr.message}`);
+      }
+      process.stdout.write(".");
+    }
+
+    // 4. Indexes (columns must finish provisioning first)
+    if (def.indexes.length) {
+      await new Promise((r) => setTimeout(r, 1200));
+      let haveIndexes = [];
+      try {
+        const res = await db.listIndexes(DB_ID, tableId);
+        haveIndexes = res.indexes.map((i) => i.key);
+      } catch { /* none */ }
+
+      for (const idx of def.indexes) {
+        if (haveIndexes.includes(idx.key)) continue;
+        try {
+          await db.createIndex(
+            DB_ID, tableId, idx.key,
+            idx.unique ? "unique" : "key",
+            idx.attributes, idx.orders
+          );
+          console.log(`\n    + index ${tableId}.${idx.key}`);
+        } catch (err) {
+          // Indexes are a performance optimisation, not a correctness
+          // requirement for small datasets — warn but do not fail.
+          noteMissing(err);
+          warned.add(`index ${tableId}.${idx.key}`);
+          console.log(`\n    ! index ${tableId}.${idx.key}: ${err.message}`);
+        }
+      }
+    }
+    if (![...failed].some((f) => String(f).startsWith(tableId))) {
+      console.log(`  ✓ ${name} ready`);
+    }
+  }
+
+  if (warned.size) {
+    console.warn(
+      "\n⚠️  " + warned.size + " index(es) were not created. Queries still work, but " +
+        "may be slower on large lists. Add indexes manually if needed.\n"
+    );
+  }
+
+  if (failed.size || missingScopes.size) {
+    console.error("\n❌ Schema setup INCOMPLETE\n");
+    if (missingScopes.size) {
+      console.error("   API key is missing scope(s): " + [...missingScopes].join(", "));
+    }
+    if (failed.size) {
+      console.error("   Could not create: " + [...failed].join(", "));
+    }
+    console.error(
+      "\n   Fix: Appwrite Console → your project → Settings → API Keys\n" +
+        "   → open this key → tick Collections / Attributes / Indexes\n" +
+        '   (Read + Write), then re-run: npm run setup:appwrite\n'
+    );
+    process.exit(1);
+  }
+
+  console.log("\n✅ Appwrite schema is ready.\n");
+  console.log("Next: add these to your .env and restart the dev server:");
+  console.log(`  VITE_APPWRITE_ENDPOINT=${ENDPOINT}`);
+  console.log(`  VITE_APPWRITE_PROJECT_ID=${PROJECT_ID}`);
+  console.log(`  VITE_APPWRITE_DB_ID=${DB_ID}\n`);
+}
+
+main().catch((err) => {
+  console.error("\nSetup failed:", err.message);
+  process.exit(1);
+});
