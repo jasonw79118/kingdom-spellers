@@ -28,7 +28,21 @@ you're playing. No configuration required.
 ```bash
 npm run build     # outputs to build/
 npm run preview   # serve the production build locally
+npm run deploy    # publish build/ to the gh-pages branch
 ```
+
+The site is published from the root of the **`gh-pages`** branch, which GitHub
+serves at <https://jasonw79118.github.io/kingdom-spellers/>.
+
+Two settings make this work without any server configuration:
+
+- `base: "/kingdom-spellers/"` in `vite.config.js` so asset URLs resolve under
+  the project sub-path.
+- `HashRouter` instead of `BrowserRouter`, so deep links and page refreshes work
+  on a static host that has no SPA fallback.
+
+`npm run deploy` is idempotent and safe to re-run — it keeps branch history by
+committing on top, rather than force-pushing an orphan.
 
 ---
 
@@ -74,9 +88,27 @@ Verify with `npm run verify:schema`.
 ### 3. Enable email/password auth
 
 In the console: **Auth → Settings → Registration**, enable **Email/Password**.
-Optionally add a **Redirect URL** for your deployed site.
 
-### 4. Configure the client and restart
+### 4. Register your site hostnames (required for CORS)
+
+Appwrite only accepts browser requests from hostnames registered as project
+platforms. Without this the site loads but every Appwrite call fails with
+*"Access to fetch … has been blocked by CORS policy"*.
+
+```bash
+npm run setup:platforms
+```
+
+By default this registers `jasonw79118.github.io` and `localhost`. Override
+with a comma-separated list in `.env`:
+
+```
+APPWRITE_HOSTNAMES=jasonw79118.github.io,localhost
+```
+
+Add any other hostname you deploy to (e.g. a custom domain).
+
+### 5. Configure the client and restart
 
 ```bash
 VITE_APPWRITE_ENDPOINT=https://fra.cloud.appwrite.io/v1
@@ -100,6 +132,8 @@ vars. No component code changes are needed.
 ```
 ├── scripts/
 │   ├── setup-appwrite.mjs    # One-time Appwrite schema setup (idempotent)
+│   ├── setup-platforms.mjs   # Register hostnames for Appwrite CORS
+│   ├── deploy.mjs            # Publish build/ to the gh-pages branch
 │   ├── verify-schema.mjs     # Print tables / columns / indexes
 │   └── verify-game.mjs       # Game rules + economy checks (npm test)
 ├── supabase/
