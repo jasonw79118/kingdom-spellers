@@ -8,6 +8,7 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
+    "deploy": "node scripts/deploy.mjs",
     "setup:appwrite": "node scripts/setup-appwrite.mjs",
     "verify:schema": "node scripts/verify-schema.mjs",
     "verify:game": "node scripts/verify-game.mjs",

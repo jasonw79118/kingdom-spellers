@@ -9,6 +9,9 @@
 # production
 /build
 
+# deploy scratch worktree
+/.deploy-worktree
+
 # env — never commit real credentials
 .env
 .env.local
