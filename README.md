@@ -32,51 +32,67 @@ npm run preview   # serve the production build locally
 
 ---
 
-## Going live with Supabase
+## Going live with Appwrite
 
-The app uses a single data layer (`src/lib/backend.js`) that works with two
-backends behind the same async interface:
+The app uses a single data layer (`src/lib/backend.js`) that works with
+several backends behind the same async interface:
 
 | Mode | When | Storage |
 |------|------|---------|
-| **Demo** | `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY` are unset | `localStorage` |
-| **Supabase** | Both env vars are set | Supabase PostgreSQL |
+| **Appwrite** | `VITE_APPWRITE_ENDPOINT` + `VITE_APPWRITE_PROJECT_ID` are set | Appwrite (current default) |
+| **Supabase** | Supabase env vars set, Appwrite unset | Supabase PostgreSQL |
+| **Demo** | Nothing configured | `localStorage` |
 
-### 1. Create a Supabase project
+The SDKs are **lazily loaded**, so a project only downloads the backend it
+actually uses.
 
-Sign up free at <https://supabase.com> and create a new project.
+### 1. Create an API key
 
-### 2. Run the schema
+In the [Appwrite Console](https://cloud.appwrite.io) open your project, then
+**Settings → API Keys → Create API Key** with scope **Any**. Copy the key.
 
-Open **Dashboard → SQL Editor → New query**, paste the entire contents of
-[`supabase/schema.sql`](supabase/schema.sql), and run it. This creates all
-tables, indexes, and **Row Level Security** policies, and seeds the starter
-achievements + inventory.
+### 2. Create the database schema
 
-### 3. Configure environment
-
-Copy `.env.example` to `.env` and fill in your project's URL and anon key
-(found under **Project Settings → API**):
+Put the key in your `.env` (see `.env.example`) and run the setup script once:
 
 ```bash
-VITE_SUPABASE_URL=https://your-project.supabase.co
-VITE_SUPABASE_ANON_KEY=your-anon-key
+npm run setup:appwrite
 ```
 
-Restart the dev server. The app now uses Supabase Auth + PostgreSQL.
+This creates the database, all 12 collections, their attributes and indexes.
+It is **idempotent** — re-running it skips anything that already exists.
 
-### 4. Enable email auth (optional)
+### 3. Enable email/password auth
 
-In **Authentication → Providers**, enable **Email**. For Google login,
-enable the **Google** provider and add your OAuth credentials.
+In the console: **Auth → Settings → Registration**, enable **Email/Password**.
+Optionally add a **Redirect URL** for your deployed site.
+
+### 4. Configure the client and restart
+
+```bash
+VITE_APPWRITE_ENDPOINT=https://fra.cloud.appwrite.io/v1
+VITE_APPWRITE_PROJECT_ID=6abacd6a001d4161641f
+VITE_APPWRITE_DB_ID=kingdom
+```
+
+Restart `npm run dev`. The app now uses Appwrite Auth + Databases.
+
+### Using Supabase instead
+
+`supabase/schema.sql` still contains the full PostgreSQL schema with Row
+Level Security. Run it in the Supabase SQL editor, then set
+`VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` instead of the Appwrite
+vars. No component code changes are needed.
 
 ---
 
 ## Project structure
 
 ```
+├── scripts/
+│   └── setup-appwrite.mjs    # One-time Appwrite schema setup (idempotent)
 ├── supabase/
-│   └── schema.sql            # Full database schema + RLS + seed data
+│   └── schema.sql            # Optional PostgreSQL schema + RLS
 ├── public/                   # Static assets (images, sounds, manifest)
 ├── src/
 │   ├── main.jsx              # Entry point
@@ -85,8 +101,10 @@ enable the **Google** provider and add your OAuth credentials.
 │   ├── context/
 │   │   └── AuthContext.jsx   # Auth state + actions
 │   ├── lib/
-│   │   ├── backend.js        # Unified backend interface (demo ↔ Supabase)
-│   │   ├── supabase.js       # Supabase client (null in demo mode)
+│   │   ├── backend.js        # Unified backend interface + lazy loader
+│   │   ├── appwrite.js       # Appwrite client config
+│   │   ├── appwriteBackend.js# Appwrite implementation of the interface
+│   │   ├── supabase.js       # Supabase client (lazy)
 │   │   ├── supabaseBackend.js# Supabase implementation of the interface
 │   │   ├── localBackend.js   # localStorage demo implementation
 │   │   ├── seedDictionary.js # Built-in word definitions (from v1 lists)
@@ -169,10 +187,16 @@ attempts, never just one. Incorrect words are weighted to reappear more often
 
 ### Security
 
-- Supabase **Row Level Security** is enabled on every table.
-- Parents can only read/write their **own** profile and their **children's** data.
-- Children's data is never exposed publicly.
-- The shared dictionary is read-only for app users.
+- **Appwrite:** every child-owned document (profiles, lists, words, attempts,
+  mastery, progress, inventory) is created with document-level permissions
+  restricted to the owning parent — a parent can only ever read their own
+  family's data. The shared dictionary and catalogs are readable by any
+  signed-in user.
+- **Supabase:** Row Level Security is enabled on every table, with policies
+  limiting parents to their own children.
+- Children's data is never exposed publicly in either mode.
+- API keys used for setup are read from `.env` and are **never** prefixed
+  with `VITE_`, so they are not bundled into the browser build.
 
 ### Routing
 
@@ -200,8 +224,9 @@ The rebuild is planned in phases — one at a time, testing after each:
 
 - **React 19** + **Vite 7**
 - **React Router 7** (HashRouter)
-- **Supabase** (Auth + PostgreSQL + RLS)
+- **Appwrite** (Auth + Databases) — current backend
+- **Supabase** (Auth + PostgreSQL + RLS) — optional alternative
 - **Framer Motion** (animations)
 - **Web Speech API** (text-to-speech)
-- **Tesseract.js** (OCR — Phase 3)
+- **Tesseract.js** (on-device OCR)
 - Custom SVG design system (no UI framework)

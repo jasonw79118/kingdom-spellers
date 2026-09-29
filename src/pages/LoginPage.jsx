@@ -123,8 +123,10 @@ export default function LoginPage() {
 
         <p className="text-center ks-small ks-muted" style={{ margin: 0 }}>
           {backendMode === "demo"
-            ? "Demo mode — accounts are stored locally on this device. Add Supabase keys to go live."
-            : "Secured with Supabase Auth."}
+            ? "Demo mode — accounts are stored locally on this device. Add your Appwrite keys to go live."
+            : backendMode === "appwrite"
+              ? "Secured with Appwrite Auth."
+              : "Secured with Supabase Auth."}
         </p>
       </div>
     </div>

@@ -11,16 +11,25 @@ export function AuthProvider({ children }) {
 
   useEffect(() => {
     let active = true;
+    let unsubscribe = null;
+
     backend.auth.getCurrentUser().then((u) => {
       if (!active) return;
       setUser(u);
       setLoading(false);
     });
-    const unsubscribe = backend.auth.onAuthChange((u) => {
+
+    // onAuthChange resolves asynchronously through the backend proxy, so the
+    // returned unsubscribe function arrives in a promise.
+    Promise.resolve(backend.auth.onAuthChange((u) => {
       if (!active) return;
       setUser(u);
       setLoading(false);
+    })).then((fn) => {
+      if (active) unsubscribe = fn;
+      else fn?.();
     });
+
     return () => {
       active = false;
       unsubscribe?.();
