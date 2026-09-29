@@ -1,19 +1,26 @@
 // One-time Appwrite schema setup.
 //
-// Run this ONCE from your machine to create the database, all collections,
-// their attributes, indexes, and permissions:
+// Run this to create the database, all tables, their columns and indexes:
 //
-//   node scripts/setup-appwrite.mjs
+//   npm run setup:appwrite
 //
-// Requires two values in a .env file (or set as environment variables):
-//   APPWRITE_API_KEY   — an API key with "Any" scope (create collections)
+// Requires in a .env file (or set as environment variables):
+//   APPWRITE_API_KEY   — an API key with full scope
 //   APPWRITE_ENDPOINT  — https://fra.cloud.appwrite.io/v1
+//   APPWRITE_PROJECT_ID
 //
 // Get the API key from: Appwrite Console → Project → Settings → API Keys.
 //
+// NOTE: this uses the **TablesDB** service (Appwrite 2.x's current API).
+// Appwrite 2.x grants API-key scopes for TablesDB ("tables", "columns",
+// "indexes", "rows"), not for the older Databases service ("collections",
+// "attributes"). Using the legacy Databases service here fails with
+// "missing scopes (collections.write)" even when the console shows every
+// scope selected — so we use TablesDB, which is the same underlying storage.
+//
 // The script is idempotent: re-running it skips anything that already exists.
 
-import { Client, Databases, Permission, Role, Query } from "node-appwrite";
+import { Client, TablesDB, Permission, Role } from "node-appwrite";
 import { readFileSync, existsSync } from "node:fs";
 
 // --- config -----------------------------------------------------------------
@@ -45,7 +52,7 @@ const client = new Client()
   .setProject(PROJECT_ID)
   .setKey(API_KEY);
 
-const db = new Databases(client);
+const db = new TablesDB(client);
 
 const str = (key, size, required = false, def = undefined) => ({
   key, type: "string", size, required, ...(def !== undefined ? { default: def } : {}),
@@ -62,9 +69,9 @@ const bool = (key, required = false, def = undefined) => ({
 const json = (key, required = false) => ({ key, type: "string", size: 20000, required });
 const datetime = (key) => ({ key, type: "datetime", required: false });
 
-// Collection definitions: attributes + indexes.
-// Security is set per-document at creation time (owner-only), so collection
-// document security stays closed.
+// Table definitions: columns + indexes.
+// Security is set per-document at creation time (owner-only) by the app, so
+// table row security stays open to signed-in users.
 const COLLECTIONS = {
   profiles: {
     attributes: [str("displayName", 100)],
@@ -215,7 +222,7 @@ async function main() {
     console.log(`  + created database "${DB_ID}"`);
   }
 
-  // 2. Collections
+  // 2. Tables
   const failed = new Set();
   const warned = new Set();
   const missingScopes = new Set();
@@ -224,102 +231,96 @@ async function main() {
     if (m) for (const s of JSON.parse(m[1])) missingScopes.add(s);
   };
   for (const [name, def] of Object.entries(COLLECTIONS)) {
-    let collectionId = name;
+    let tableId = name;
     try {
-      await db.getCollection(DB_ID, name);
-      console.log(`  ✓ collection "${name}" exists`);
+      await db.getTable(DB_ID, name);
+      console.log(`  ✓ table "${name}" exists`);
     } catch {
       try {
-        await db.createCollection(DB_ID, name, name, [
+        await db.createTable(DB_ID, name, name, [
           Permission.read(Role.any()),
           Permission.create(Role.any()),
           Permission.update(Role.any()),
           Permission.delete(Role.any()),
         ], false);
-        collectionId = name;
-        console.log(`  + created collection "${name}"`);
+        tableId = name;
+        console.log(`  + created table "${name}"`);
       } catch (err) {
-        // A missing collections.read scope makes the existence check above
-        // throw, so fall through to create — treat "already exists" as done.
         if (err.message.includes("already exists")) {
-          console.log(`  ✓ collection "${name}" exists`);
+          console.log(`  ✓ table "${name}" exists`);
         } else {
           noteMissing(err);
-          failed.add(`collection "${name}"`);
-          console.error(`  ! could not create collection "${name}": ${err.message}`);
+          failed.add(`table "${name}"`);
+          console.error(`  ! could not create table "${name}": ${err.message}`);
           continue;
         }
       }
     }
 
-    // 3. Attributes
+    // 3. Columns
     let existing = [];
     try {
-      const res = await db.listAttributes(DB_ID, collectionId);
-      existing = res.attributes.map((a) => a.key);
+      const res = await db.listColumns(DB_ID, tableId);
+      existing = res.columns.map((c) => c.key);
     } catch { /* none yet */ }
-
-    const noteMissingAttr = noteMissing;
 
     for (const attr of def.attributes) {
       if (existing.includes(attr.key)) continue;
       let lastErr = null;
-      // Newly-added attributes on a populated collection must be optional,
-      // otherwise Appwrite rejects the create.
+      // New columns on a populated table must be optional, otherwise
+      // Appwrite rejects the create.
       const required = def.preexisting?.includes(attr.key) ? false : attr.required;
       try {
         if (attr.type === "string") {
-          await db.createStringAttribute(DB_ID, collectionId, attr.key, attr.size, required, attr.default);
+          await db.createStringColumn(DB_ID, tableId, attr.key, attr.size, required, attr.default);
         } else if (attr.type === "integer") {
-          await db.createIntegerAttribute(DB_ID, collectionId, attr.key, required, attr.default);
+          await db.createIntegerColumn(DB_ID, tableId, attr.key, required, undefined, undefined, attr.default);
         } else if (attr.type === "double") {
-          await db.createFloatAttribute(DB_ID, collectionId, attr.key, required, attr.default);
+          await db.createFloatColumn(DB_ID, tableId, attr.key, required, undefined, undefined, attr.default);
         } else if (attr.type === "boolean") {
-          await db.createBooleanAttribute(DB_ID, collectionId, attr.key, required, attr.default);
+          await db.createBooleanColumn(DB_ID, tableId, attr.key, required, attr.default);
         } else if (attr.type === "datetime") {
-          await db.createDatetimeAttribute(DB_ID, collectionId, attr.key, required);
+          await db.createDatetimeColumn(DB_ID, tableId, attr.key, required);
         }
       } catch (e) {
         lastErr = e;
         noteMissing(e);
-        failed.add(`attribute ${collectionId}.${attr.key}`);
+        failed.add(`column ${tableId}.${attr.key}`);
       }
       if (lastErr) {
-        console.log(`\n    ! attribute ${collectionId}.${attr.key}: ${lastErr.message}`);
+        console.log(`\n    ! column ${tableId}.${attr.key}: ${lastErr.message}`);
       }
       process.stdout.write(".");
     }
 
-    // 4. Indexes (attributes must finish provisioning first)
+    // 4. Indexes (columns must finish provisioning first)
     if (def.indexes.length) {
       await new Promise((r) => setTimeout(r, 1200));
       let haveIndexes = [];
       try {
-        const res = await db.listIndexes(DB_ID, collectionId);
+        const res = await db.listIndexes(DB_ID, tableId);
         haveIndexes = res.indexes.map((i) => i.key);
       } catch { /* none */ }
 
       for (const idx of def.indexes) {
         if (haveIndexes.includes(idx.key)) continue;
         try {
-          // Signature: createIndex(db, collection, key, type, attributes, orders)
-          // `type` is "key" for a normal index or "unique" for a unique one.
           await db.createIndex(
-            DB_ID, collectionId, idx.key,
+            DB_ID, tableId, idx.key,
             idx.unique ? "unique" : "key",
             idx.attributes, idx.orders
           );
-          console.log(`\n    + index ${collectionId}.${idx.key}`);
+          console.log(`\n    + index ${tableId}.${idx.key}`);
         } catch (err) {
           // Indexes are a performance optimisation, not a correctness
           // requirement for small datasets — warn but do not fail.
           noteMissing(err);
-          warned.add(`index ${collectionId}.${idx.key}`);
-          console.log(`\n    ! index ${collectionId}.${idx.key}: ${err.message}`);
+          warned.add(`index ${tableId}.${idx.key}`);
+          console.log(`\n    ! index ${tableId}.${idx.key}: ${err.message}`);
         }
       }
     }
-    if (![...failed].some((f) => String(f).startsWith(collectionId))) {
+    if (![...failed].some((f) => String(f).startsWith(tableId))) {
       console.log(`  ✓ ${name} ready`);
     }
   }

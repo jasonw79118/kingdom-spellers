@@ -59,8 +59,17 @@ Put the key in your `.env` (see `.env.example`) and run the setup script once:
 npm run setup:appwrite
 ```
 
-This creates the database, all 12 collections, their attributes and indexes.
+This creates the database, all 12 tables, their columns and 12 indexes.
 It is **idempotent** — re-running it skips anything that already exists.
+Verify with `npm run verify:schema`.
+
+> **A note on API key scopes (Appwrite 2.x):** the console grants scopes for
+> **TablesDB** (`tables`, `columns`, `indexes`, `rows`), not for the older
+> **Databases** service (`collections`, `attributes`). The setup script
+> therefore uses `TablesDB`. Using the legacy `Databases` service fails with
+> `missing scopes (["collections.write"])` even when every scope is selected.
+> The browser app talks to Appwrite with the *client* SDK using the signed-in
+> user's session, so it needs no scopes at all.
 
 ### 3. Enable email/password auth
 
@@ -90,7 +99,9 @@ vars. No component code changes are needed.
 
 ```
 ├── scripts/
-│   └── setup-appwrite.mjs    # One-time Appwrite schema setup (idempotent)
+│   ├── setup-appwrite.mjs    # One-time Appwrite schema setup (idempotent)
+│   ├── verify-schema.mjs     # Print tables / columns / indexes
+│   └── verify-game.mjs       # Game rules + economy checks (npm test)
 ├── supabase/
 │   └── schema.sql            # Optional PostgreSQL schema + RLS
 ├── public/                   # Static assets (images, sounds, manifest)
