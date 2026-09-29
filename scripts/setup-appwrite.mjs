@@ -127,9 +127,7 @@ const COLLECTIONS = {
     ],
   },
   word_attempts: {
-    preexisting: ["parentId"],
     attributes: [
-      str("parentId", 64, true),
       str("playerId", 64, true),
       str("word", 60, true),
       str("listId", 64),
@@ -137,14 +135,11 @@ const COLLECTIONS = {
       bool("correct", true),
     ],
     indexes: [
-      { key: "idx_parent_player", attributes: ["parentId", "playerId"], orders: ["ASC", "ASC"] },
-      { key: "idx_parent_player_word", attributes: ["parentId", "playerId", "word"], orders: ["ASC", "ASC", "ASC"] },
+      { key: "idx_player_word", attributes: ["playerId", "word"], orders: ["ASC", "ASC"] },
     ],
   },
   player_word_mastery: {
-    preexisting: ["parentId"],
     attributes: [
-      str("parentId", 64, true),
       str("playerId", 64, true),
       str("word", 60, true),
       int("attempts", false, 0),
@@ -156,8 +151,7 @@ const COLLECTIONS = {
       str("lastAttemptOn", 40),
     ],
     indexes: [
-      { key: "idx_parent_player", attributes: ["parentId", "playerId"], orders: ["ASC", "ASC"] },
-      { key: "idx_parent_player_word", attributes: ["parentId", "playerId", "word"], orders: ["ASC", "ASC", "ASC"], unique: true },
+      { key: "idx_player_word", attributes: ["playerId", "word"], orders: ["ASC", "ASC"], unique: true },
     ],
   },
   player_progress: {

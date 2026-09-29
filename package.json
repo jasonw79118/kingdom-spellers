@@ -8,7 +8,9 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "setup:appwrite": "node scripts/setup-appwrite.mjs"
+    "setup:appwrite": "node scripts/setup-appwrite.mjs",
+    "verify:game": "node scripts/verify-game.mjs",
+    "test": "node scripts/verify-game.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.57.0",

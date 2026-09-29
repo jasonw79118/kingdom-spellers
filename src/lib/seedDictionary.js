@@ -3,9 +3,9 @@
 // app ships with real kid-friendly definitions out of the box.
 // In Supabase mode these are upserted on first run (see backend.js).
 
-import { firstGradeWords } from "../data/firstgradelist";
-import { secondGradeWords } from "../data/secondgradelist";
-import { normalizeWord } from "./utils";
+import { firstGradeWords } from "../data/firstgradelist.js";
+import { secondGradeWords } from "../data/secondgradelist.js";
+import { normalizeWord } from "./utils.js";
 
 function toEntries(source, grade) {
   return Object.entries(source).map(([word, definition]) => ({

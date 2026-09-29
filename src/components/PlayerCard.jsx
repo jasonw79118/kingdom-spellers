@@ -5,8 +5,9 @@ import Avatar from "./Avatar";
 import StatPill from "./StatPill";
 import ProgressBar from "./ProgressBar";
 import { xpProgress } from "../lib/utils";
+import { rankForProsperity } from "../game/kingdom";
 
-export default function PlayerCard({ profile, onPlay }) {
+export default function PlayerCard({ profile, onPlay, rank }) {
   const xp = xpProgress(profile.xp || 0);
 
   return (
@@ -19,8 +20,8 @@ export default function PlayerCard({ profile, onPlay }) {
               {profile.name}
             </h3>
             <div className="ks-row-wrap" style={{ marginTop: 4 }}>
+              {rank && <span className="badge badge-gold">{rank.icon} {rank.title}</span>}
               <span className="badge">Grade {profile.grade_level}</span>
-              <span className="badge badge-gold">{profile.difficulty}</span>
             </div>
           </div>
         </div>
@@ -40,6 +41,9 @@ export default function PlayerCard({ profile, onPlay }) {
         <button type="button" className="btn btn-forest ks-grow" onClick={() => onPlay?.(profile)}>
           ▶ Play
         </button>
+        <Link to={`/kingdom/${profile.id}`} className="btn btn-gold" title="Spend gold to build your kingdom">
+          🏰
+        </Link>
         <Link to={`/players?edit=${profile.id}`} className="btn btn-ghost">
           Edit
         </Link>

@@ -9,6 +9,9 @@ import PlayersPage from "./pages/PlayersPage";
 import ListsPage from "./pages/ListsPage";
 import ListEditorPage from "./pages/ListEditorPage";
 import ScanListPage from "./pages/ScanListPage";
+import PlayPage from "./pages/PlayPage";
+import KingdomPage from "./pages/KingdomPage";
+import ProgressPage from "./pages/ProgressPage";
 
 
 function Protected({ children }) {
@@ -57,6 +60,9 @@ export default function App() {
             <Route path="/lists/new" element={<ListEditorPage />} />
             <Route path="/lists/scan" element={<ScanListPage />} />
             <Route path="/lists/:listId" element={<ListEditorPage />} />
+            <Route path="/play" element={<PlayPage />} />
+            <Route path="/kingdom/:playerId" element={<KingdomPage />} />
+            <Route path="/progress" element={<ProgressPage />} />
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

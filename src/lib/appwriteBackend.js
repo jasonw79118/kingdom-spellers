@@ -16,9 +16,9 @@ import {
   Permission,
   Role,
   Query,
-} from "./appwrite";
-import { normalizeWord, uid, todayKey } from "./utils";
-import { seedDictionary, fallbackDefinition, starterWordsForGrade } from "./seedDictionary";
+} from "./appwrite.js";
+import { normalizeWord, uid, todayKey } from "./utils.js";
+import { seedDictionary, fallbackDefinition, starterWordsForGrade } from "./seedDictionary.js";
 
 // --- helpers -----------------------------------------------------------------
 
@@ -121,16 +121,21 @@ function ownerPerms(parentId) {
 // the authoritative privacy boundary.
 let currentUserId = null;
 
-function parentId() {
-  return currentUserId;
-}
-
 // Guard: refuse to run a parent-scoped query with no known parent.
 function requireParent() {
   if (!currentUserId) {
     throw new Error("Not signed in");
   }
   return currentUserId;
+}
+
+// Confirm a child profile belongs to the signed-in parent before touching
+// that child's data. Single source of truth: player_profiles.parentId.
+async function assertOwnsPlayer(db, playerId) {
+  const me = requireParent();
+  const profile = await db.getDocument(DB_ID, COLLECTIONS.playerProfiles, playerId);
+  if (profile.parentId !== me) throw new Error("Not permitted");
+  return { me, profile };
 }
 
 function computeScore(m) {
@@ -325,9 +330,7 @@ export function createAppwriteBackend() {
       },
 
       async update(id, d) {
-        const me = requireParent();
-        const existing = await db().getDocument(DB_ID, COLLECTIONS.playerProfiles, id);
-        if (existing.parentId !== me) throw new Error("Not permitted");
+        const { profile } = await assertOwnsPlayer(db(), id);
         const payload = {};
         if (d.name !== undefined) payload.name = d.name;
         if (d.avatar !== undefined) payload.avatar = JSON.stringify(d.avatar || {});
@@ -342,8 +345,7 @@ export function createAppwriteBackend() {
       },
 
       async remove(id) {
-        const existing = await db().getDocument(DB_ID, COLLECTIONS.playerProfiles, id);
-        if (existing.parentId !== requireParent()) throw new Error("Not permitted");
+        await assertOwnsPlayer(db(), id);
         await db().deleteDocument(DB_ID, COLLECTIONS.playerProfiles, id);
       },
     },
@@ -381,13 +383,15 @@ export function createAppwriteBackend() {
         if (!words.length) return {};
         const normalized = [...new Set(words.map((w) => w.normalized_word))];
         const out = {};
-        // Query in chunks to respect Appwrite's query limit.
-        for (let i = 0; i < normalized.length; i += 20) {
-          const chunk = normalized.slice(i, i + 20);
+        // Appwrite ANDs separate queries together, so several
+        // equal("normalizedWord", x) clauses would match nothing. Pass an
+        // array instead — that becomes a single "in" query.
+        for (let i = 0; i < normalized.length; i += 50) {
+          const chunk = normalized.slice(i, i + 50);
           const { documents } = await db().listDocuments(
             DB_ID, COLLECTIONS.dictionaryWords,
-            chunk.map((n) => Query.equal("normalizedWord", n)),
-            50
+            [Query.equal("normalizedWord", chunk)],
+            100
           );
           for (const d of documents) {
             const m = mapDict(d);
@@ -510,11 +514,12 @@ export function createAppwriteBackend() {
         await ensureSeeded();
         const normalized = [...new Set(words.map(normalizeWord))];
         const out = {};
-        for (let i = 0; i < normalized.length; i += 20) {
-          const chunk = normalized.slice(i, i + 20);
+        // Array value = single "in" query (separate equal() clauses AND together).
+        for (let i = 0; i < normalized.length; i += 50) {
+          const chunk = normalized.slice(i, i + 50);
           const { documents } = await db().listDocuments(
             DB_ID, COLLECTIONS.dictionaryWords,
-            chunk.map((n) => Query.equal("normalizedWord", n)), 50
+            [Query.equal("normalizedWord", chunk)], 100
           );
           for (const d of documents) {
             const m = mapDict(d);
@@ -551,16 +556,13 @@ export function createAppwriteBackend() {
 
     mastery: {
       async recordAttempt(playerId, word, listId, mode, correct) {
-        const me = requireParent();
-        const profileDoc = await db().getDocument(DB_ID, COLLECTIONS.playerProfiles, playerId);
-        // Guard against one parent writing attempts for another family's child.
-        if (profileDoc.parentId !== me) throw new Error("Not permitted");
+        const { me, profile } = await assertOwnsPlayer(db(), playerId);
         const perms = ownerPerms(me);
         const normalized = normalizeWord(word);
 
         await db().createDocument(
           DB_ID, COLLECTIONS.wordAttempts, ID.unique(),
-          { parentId: me, playerId, word: normalized, listId: listId || "", mode, correct },
+          { playerId, word: normalized, listId: listId || "", mode, correct },
           perms
         );
 
@@ -568,7 +570,6 @@ export function createAppwriteBackend() {
         const { documents } = await db().listDocuments(
           DB_ID, COLLECTIONS.wordAttempts,
           [
-            Query.equal("parentId", me),
             Query.equal("playerId", playerId),
             Query.equal("word", normalized),
             Query.orderDesc("$createdAt"),
@@ -595,7 +596,7 @@ export function createAppwriteBackend() {
         // Upsert by deterministic document ID.
         const masteryId = `${playerId}_${normalized}`;
         const payload = {
-          parentId: me, playerId, word: normalized,
+          playerId, word: normalized,
           attempts: m.attempts,
           correctAttempts: m.correct_attempts,
           incorrectAttempts: m.incorrect_attempts,
@@ -613,22 +614,19 @@ export function createAppwriteBackend() {
       },
 
       async list(playerId) {
+        await assertOwnsPlayer(db(), playerId);
         const { documents } = await db().listDocuments(
           DB_ID, COLLECTIONS.mastery,
-          [Query.equal("parentId", requireParent()), Query.equal("playerId", playerId)],
-          500
+          [Query.equal("playerId", playerId)], 500
         );
         return documents.map(mapMastery);
       },
 
       async listAttempts(playerId) {
+        await assertOwnsPlayer(db(), playerId);
         const { documents } = await db().listDocuments(
           DB_ID, COLLECTIONS.wordAttempts,
-          [
-            Query.equal("parentId", requireParent()),
-            Query.equal("playerId", playerId),
-            Query.orderDesc("$createdAt"),
-          ],
+          [Query.equal("playerId", playerId), Query.orderDesc("$createdAt")],
           200
         );
         return documents.map((a) => ({
@@ -645,50 +643,63 @@ export function createAppwriteBackend() {
 
     progress: {
       async get(playerId) {
-        const me = requireParent();
-        const profileDoc = await db().getDocument(DB_ID, COLLECTIONS.playerProfiles, playerId);
-        if (profileDoc.parentId !== me) throw new Error("Not permitted");
+        const { me } = await assertOwnsPlayer(db(), playerId);
         const perms = ownerPerms(me);
+        const blank = {
+          player_id: playerId,
+          unlocked_kingdoms: [1],
+          current_kingdom: 1,
+          buildings: {},
+          characters_unlocked: [],
+        };
         try {
           const doc = await db().getDocument(DB_ID, COLLECTIONS.progress, playerId);
           return {
             player_id: playerId,
-            unlocked_kingdoms: doc.unlockedKingdoms || [1],
+            unlocked_kingdoms: parseJson(doc.unlockedKingdoms, [1]),
             current_kingdom: doc.currentKingdom ?? 1,
             buildings: parseJson(doc.buildings, {}),
-            characters_unlocked: doc.charactersUnlocked || [],
+            characters_unlocked: parseJson(doc.charactersUnlocked, []),
           };
         } catch {
+          // Appwrite string attributes: arrays/objects must be JSON-encoded.
           await db().createDocument(
             DB_ID, COLLECTIONS.progress, playerId,
-            { unlockedKingdoms: [1], currentKingdom: 1, buildings: "{}", charactersUnlocked: [] },
+            {
+              playerId,
+              unlockedKingdoms: JSON.stringify([1]),
+              currentKingdom: 1,
+              buildings: JSON.stringify({}),
+              charactersUnlocked: JSON.stringify([]),
+            },
             perms
           );
-          return {
-            player_id: playerId,
-            unlocked_kingdoms: [1],
-            current_kingdom: 1,
-            buildings: {},
-            characters_unlocked: [],
-          };
+          return blank;
         }
       },
 
       async save(playerId, d) {
-        const me = requireParent();
-        const profileDoc = await db().getDocument(DB_ID, COLLECTIONS.playerProfiles, playerId);
-        if (profileDoc.parentId !== me) throw new Error("Not permitted");
-        const payload = {};
-        if (d.unlocked_kingdoms) payload.unlockedKingdoms = d.unlocked_kingdoms;
+        const { me } = await assertOwnsPlayer(db(), playerId);
+        // String attributes — JSON-encode any arrays/objects.
+        const payload = { playerId };
+        if (d.unlocked_kingdoms) payload.unlockedKingdoms = JSON.stringify(d.unlocked_kingdoms);
         if (d.current_kingdom !== undefined) payload.currentKingdom = d.current_kingdom;
         if (d.buildings) payload.buildings = JSON.stringify(d.buildings);
-        if (d.characters_unlocked) payload.charactersUnlocked = d.characters_unlocked;
+        if (d.characters_unlocked) payload.charactersUnlocked = JSON.stringify(d.characters_unlocked);
         try {
           await db().updateDocument(DB_ID, COLLECTIONS.progress, playerId, payload);
         } catch {
           await db().createDocument(
-            DB_ID, COLLECTIONS.progress, playerId, payload,
-            ownerPerms(profileDoc.parentId)
+            DB_ID, COLLECTIONS.progress, playerId,
+            {
+              playerId,
+              unlockedKingdoms: JSON.stringify([1]),
+              currentKingdom: 1,
+              buildings: JSON.stringify({}),
+              charactersUnlocked: JSON.stringify([]),
+              ...payload,
+            },
+            ownerPerms(me)
           );
         }
         return { player_id: playerId, ...d };

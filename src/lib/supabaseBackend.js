@@ -1,8 +1,8 @@
 // Supabase backend — mirrors the local backend interface exactly.
 // Used automatically when VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY are set.
 
-import { normalizeWord } from "./utils";
-import { seedDictionary, fallbackDefinition, starterWordsForGrade } from "./seedDictionary";
+import { normalizeWord } from "./utils.js";
+import { seedDictionary, fallbackDefinition, starterWordsForGrade } from "./seedDictionary.js";
 
 let seeded = false;
 

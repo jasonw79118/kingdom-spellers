@@ -5,8 +5,8 @@
 // with zero configuration. Swap to Supabase by setting VITE_SUPABASE_URL and
 // VITE_SUPABASE_ANON_KEY — no component code changes needed.
 
-import { uid, normalizeWord, todayKey } from "./utils";
-import { seedDictionary, fallbackDefinition, starterWordsForGrade } from "./seedDictionary";
+import { uid, normalizeWord, todayKey } from "./utils.js";
+import { seedDictionary, fallbackDefinition, starterWordsForGrade } from "./seedDictionary.js";
 
 const NS = "ks2_";
 

@@ -118,13 +118,20 @@ vars. No component code changes are needed.
 │   │   ├── WordCard.jsx      # Word + definition + text-to-speech
 │   │   ├── StatPill.jsx      # Small stat display
 │   │   └── ProgressBar.jsx   # XP / progress bar
+│   ├── game/
+│   │   ├── kingdom.js        # Kingdoms, buildings, ranks, gold economy
+│   │   ├── mastery.js        # Mastery scoring + adaptive word selection
+│   │   └── practice.js       # Session engine, puzzles, grading
 │   ├── pages/
 │   │   ├── LoginPage.jsx     # Sign in / create account
 │   │   ├── DashboardPage.jsx # Parent home + player cards
 │   │   ├── PlayersPage.jsx   # Manage child profiles + avatar editor
 │   │   ├── ListsPage.jsx     # All spelling lists
 │   │   ├── ListEditorPage.jsx# Type / paste words + review definitions
-│   │   └── ScanListPage.jsx  # Camera / upload + OCR review
+│   │   ├── ScanListPage.jsx  # Camera / upload + OCR review
+│   │   ├── PlayPage.jsx      # Practice session
+│   │   ├── KingdomPage.jsx   # Spend gold, build, claim territories
+│   │   └── ProgressPage.jsx  # Parent progress report
 │   └── data/                 # Seed word lists (grade 1 & 2)
 └── vite.config.js            # Base path, build, dev server config
 ```
@@ -210,13 +217,57 @@ SPA fallback configuration.
 
 The rebuild is planned in phases — one at a time, testing after each:
 
-- [x] **Phase 1** — Refactor to Vite, Supabase setup, auth, dashboard, player profiles
+- [x] **Phase 1** — Refactor to Vite, backend setup, auth, dashboard, player profiles
 - [x] **Phase 2** — Spelling list database, manual/paste entry, dictionary definitions, text-to-speech
 - [x] **Phase 3** — Image upload, Tesseract OCR, OCR review screen, starter lists
-- [ ] **Phase 4** — Mastery system, adaptive practice, progress reports
-- [ ] **Phase 5** — Rebuild core gameplay, castle/kingdom progression, animations
-- [ ] **Phase 6** — Additional game modes, overworld, unlockables, achievements
+- [x] **Phase 4** — Mastery system, adaptive practice, progress reports, kingdom building & ranks
+- [x] **Phase 5** — Core gameplay, kingdom progression, territory unlocks
+- [ ] **Phase 6** — Additional game modes, overworld map, unlockables, achievements
 - [ ] **Phase 7** — Polish, mobile testing, accessibility, performance, PWA, deploy
+
+---
+
+## Game loop
+
+Spelling earns **gold**, gold builds your **kingdom**, and a prosperous
+kingdom raises your **rank** — Esquire → Knight → Baron → Prince → King/Queen.
+
+```
+spell words correctly  →  gold + XP
+spend gold            →  build buildings (each adds prosperity)
+prosperity            →  rank rises
+claim territories     →  5 kingdoms, each bigger than the last
+```
+
+| Territory | Buildings | Claim cost |
+|-----------|-----------|------------|
+| Greenwood Village | 6 | free (start here) |
+| Riverstone Crossing | 5 | 500 |
+| Highland Keep | 4 | 1200 |
+| Crystal Caverns | 4 | 2200 |
+| Dragon Peak | 4 | 3600 |
+
+Every player's kingdom is stored in `player_progress` and persists across all
+spelling lists — practising a new list never resets your buildings.
+
+### Adaptive learning
+
+Each word tracks attempts, correctness and streak, producing a mastery score
+and one of five levels: **new → learning → practicing → strong → mastered**.
+
+- A word can only reach *mastered* after **4 attempts and a 3-word streak** —
+  one correct answer is never enough.
+- Words you miss come back far more often; mastered words are shown rarely as
+  spaced review.
+- Practice sessions build their word list from this, so each session targets
+  what the child actually needs.
+
+Run `npm test` to verify the progression rules (33 checks covering mastery
+thresholds, rank maths, and the gold economy).
+
+---
+
+## Project structure
 
 ---
 

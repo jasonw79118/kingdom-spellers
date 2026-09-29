@@ -9,9 +9,9 @@
 // SDKs are loaded lazily so a project only ever downloads the backend it
 // actually uses (Appwrite-only builds never pull in the Supabase client).
 
-import { isSupabaseConfigured, initSupabase } from "./supabase";
-import { isAppwriteConfigured } from "./appwrite";
-import { localBackend } from "./localBackend";
+import { isSupabaseConfigured, initSupabase } from "./supabase.js";
+import { isAppwriteConfigured } from "./appwrite.js";
+import { localBackend } from "./localBackend.js";
 
 export const backendMode = isAppwriteConfigured
   ? "appwrite"
@@ -21,12 +21,12 @@ export const backendMode = isAppwriteConfigured
 
 async function resolveBackend() {
   if (isAppwriteConfigured) {
-    const { createAppwriteBackend } = await import("./appwriteBackend");
+    const { createAppwriteBackend } = await import("./appwriteBackend.js");
     return createAppwriteBackend();
   }
   if (isSupabaseConfigured) {
     const supabase = await initSupabase();
-    const { createSupabaseBackend } = await import("./supabaseBackend");
+    const { createSupabaseBackend } = await import("./supabaseBackend.js");
     return createSupabaseBackend(supabase);
   }
   return localBackend;

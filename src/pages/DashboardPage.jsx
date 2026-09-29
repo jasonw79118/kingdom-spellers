@@ -5,12 +5,13 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { backend } from "../lib/backend";
 import PlayerCard from "../components/PlayerCard";
+import { rankForProsperity, prosperityOf } from "../game/kingdom";
 
 const PARENT_CONTROLS = [
   { icon: "📝", label: "New Spelling List", to: "/lists/new", soon: false },
   { icon: "📷", label: "Scan Spelling List", to: "/lists/scan", soon: false },
   { icon: "📚", label: "My Lists", to: "/lists", soon: false },
-  { icon: "📊", label: "Progress", to: "/progress", soon: true },
+  { icon: "📊", label: "Progress", to: "/progress", soon: false },
   { icon: "👤", label: "Players", to: "/players", soon: false },
   { icon: "⚙️", label: "Settings", to: "/settings", soon: true },
 ];
@@ -19,6 +20,7 @@ export default function DashboardPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [profiles, setProfiles] = useState([]);
+  const [progress, setProgress] = useState({});
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
@@ -26,6 +28,16 @@ export default function DashboardPage() {
     try {
       const list = await backend.profiles.list();
       setProfiles(list);
+      // Load each player's kingdom progress so the dashboard can show rank.
+      const progress = {};
+      for (const p of list) {
+        try {
+          progress[p.id] = await backend.progress.get(p.id);
+        } catch {
+          progress[p.id] = { buildings: {} };
+        }
+      }
+      setProgress(progress);
     } catch (err) {
       console.error("Failed to load profiles", err);
     } finally {
@@ -38,9 +50,7 @@ export default function DashboardPage() {
   }, [load]);
 
   const handlePlay = (profile) => {
-    // The new practice/game modes arrive in Phase 5; for now, play routes to
-    // the spelling lists so children always have something to do.
-    navigate("/lists", { state: { playerId: profile.id, playerName: profile.name } });
+    navigate("/play", { state: { playerId: profile.id, playerName: profile.name } });
   };
 
   const firstName = user?.name?.split(" ")[0] || "there";
@@ -91,9 +101,13 @@ export default function DashboardPage() {
         </div>
       ) : (
         <div className="ks-grid" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))" }}>
-          {profiles.map((p) => (
-            <PlayerCard key={p.id} profile={p} onPlay={handlePlay} />
-          ))}
+          {profiles.map((p) => {
+            const builtIds = Object.keys(progress[p.id]?.buildings || {}).filter(
+              (k) => progress[p.id].buildings[k]
+            );
+            const rank = rankForProsperity(prosperityOf(builtIds), p.avatar?.base);
+            return <PlayerCard key={p.id} profile={p} onPlay={handlePlay} rank={rank} />;
+          })}
         </div>
       )}
 
