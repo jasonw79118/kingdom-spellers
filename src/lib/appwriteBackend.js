@@ -115,6 +115,24 @@ function ownerPerms(parentId) {
   ];
 }
 
+// The signed-in parent's user id, cached so every query can be scoped to the
+// current family. Appwrite's collection-level document security is permissive
+// (it has to allow sign-up), so scoping happens in the query filter — this is
+// the authoritative privacy boundary.
+let currentUserId = null;
+
+function parentId() {
+  return currentUserId;
+}
+
+// Guard: refuse to run a parent-scoped query with no known parent.
+function requireParent() {
+  if (!currentUserId) {
+    throw new Error("Not signed in");
+  }
+  return currentUserId;
+}
+
 function computeScore(m) {
   if (!m || m.attempts === 0) return 0;
   const accuracy = m.correct_attempts / m.attempts;
@@ -216,7 +234,10 @@ export function createAppwriteBackend() {
 
       async signUp(email, password, name) {
         try {
-          await account().create({ email, password, name: name || email.split("@")[0] });
+          // Appwrite SDK v28 signature: create(userId, email, password, name?)
+          const created = await account().create(
+            ID.unique(), email, password, name || email.split("@")[0]
+          );
           await account().createEmailPasswordSession(email, password);
           const user = await this.getCurrentUser();
           // Ensure a parent profile document exists.
@@ -234,6 +255,7 @@ export function createAppwriteBackend() {
       },
 
       async signOut() {
+        currentUserId = null;
         try {
           await account().deleteSession("current");
           return { error: null };
@@ -245,32 +267,43 @@ export function createAppwriteBackend() {
       async getCurrentUser() {
         try {
           const u = await account().get();
+          currentUserId = u.$id;
           return { id: u.$id, email: u.email, name: u.name || u.email };
         } catch {
+          currentUserId = null;
           return null;
         }
       },
 
       onAuthChange(cb) {
         let stopped = false;
-        // Appwrite has no client-side auth event stream; poll the session.
         const tick = async () => {
-          if (stopped) return;
+          if (stopped || document.visibilityState === "hidden") return;
           cb(await this.getCurrentUser());
         };
         tick();
-        const interval = setInterval(tick, 3000);
+        // The web SDK persists its session, so refresh on tab focus rather
+        // than polling constantly.
+        const onFocus = () => tick();
+        const onVisible = () => {
+          if (document.visibilityState === "visible") tick();
+        };
+        window.addEventListener("focus", onFocus);
+        document.addEventListener("visibilitychange", onVisible);
         return () => {
           stopped = true;
-          clearInterval(interval);
+          window.removeEventListener("focus", onFocus);
+          document.removeEventListener("visibilitychange", onVisible);
         };
       },
     },
 
     profiles: {
       async list() {
+        // Scope to the signed-in parent — never return another family's kids.
         const { documents } = await db().listDocuments(
-          DB_ID, COLLECTIONS.playerProfiles, [], 100
+          DB_ID, COLLECTIONS.playerProfiles,
+          [Query.equal("parentId", requireParent())], 100
         );
         return documents.map(mapProfile);
       },
@@ -292,6 +325,9 @@ export function createAppwriteBackend() {
       },
 
       async update(id, d) {
+        const me = requireParent();
+        const existing = await db().getDocument(DB_ID, COLLECTIONS.playerProfiles, id);
+        if (existing.parentId !== me) throw new Error("Not permitted");
         const payload = {};
         if (d.name !== undefined) payload.name = d.name;
         if (d.avatar !== undefined) payload.avatar = JSON.stringify(d.avatar || {});
@@ -306,15 +342,20 @@ export function createAppwriteBackend() {
       },
 
       async remove(id) {
+        const existing = await db().getDocument(DB_ID, COLLECTIONS.playerProfiles, id);
+        if (existing.parentId !== requireParent()) throw new Error("Not permitted");
         await db().deleteDocument(DB_ID, COLLECTIONS.playerProfiles, id);
       },
     },
 
     lists: {
       async list(playerId = null) {
-        const queries = playerId
-          ? [Query.equal("playerId", playerId), Query.orderDesc("$createdAt")]
-          : [Query.orderDesc("$createdAt")];
+        // Always scope by parentId so a family only ever sees its own lists.
+        const queries = [
+          Query.equal("parentId", requireParent()),
+          ...(playerId ? [Query.equal("playerId", playerId)] : []),
+          Query.orderDesc("$createdAt"),
+        ];
         const { documents } = await db().listDocuments(
           DB_ID, COLLECTIONS.spellingLists, queries, 100
         );
@@ -376,6 +417,9 @@ export function createAppwriteBackend() {
       },
 
       async remove(id) {
+        // Only the owning parent may delete a list.
+        const list = await db().getDocument(DB_ID, COLLECTIONS.spellingLists, id);
+        if (list.parentId !== requireParent()) throw new Error("Not permitted");
         const { documents } = await db().listDocuments(
           DB_ID, COLLECTIONS.spellingWords, [Query.equal("listId", id)], 200
         );
@@ -387,7 +431,9 @@ export function createAppwriteBackend() {
 
       async createDefaultFor(player) {
         const { documents } = await db().listDocuments(
-          DB_ID, COLLECTIONS.spellingLists, [Query.equal("playerId", player.id)], 1
+          DB_ID, COLLECTIONS.spellingLists,
+          [Query.equal("parentId", requireParent()), Query.equal("playerId", player.id)],
+          1
         );
         if (documents.length) return mapList(documents[0]);
         const list = await this.create({
@@ -401,6 +447,11 @@ export function createAppwriteBackend() {
       },
 
       async saveWords(listId, words) {
+        const me = requireParent();
+        const listDoc = await db().getDocument(DB_ID, COLLECTIONS.spellingLists, listId);
+        if (listDoc.parentId !== me) throw new Error("Not permitted");
+        const perms = ownerPerms(me);
+
         // Remove existing words for this list, then re-add.
         const { documents: existing } = await db().listDocuments(
           DB_ID, COLLECTIONS.spellingWords, [Query.equal("listId", listId)], 200
@@ -408,9 +459,6 @@ export function createAppwriteBackend() {
         for (const w of existing) {
           await db().deleteDocument(DB_ID, COLLECTIONS.spellingWords, w.$id);
         }
-
-        const listDoc = await db().getDocument(DB_ID, COLLECTIONS.spellingLists, listId);
-        const perms = ownerPerms(listDoc.parentId);
 
         const created = [];
         for (let i = 0; i < words.length; i++) {
@@ -503,20 +551,28 @@ export function createAppwriteBackend() {
 
     mastery: {
       async recordAttempt(playerId, word, listId, mode, correct) {
+        const me = requireParent();
         const profileDoc = await db().getDocument(DB_ID, COLLECTIONS.playerProfiles, playerId);
-        const perms = ownerPerms(profileDoc.parentId);
+        // Guard against one parent writing attempts for another family's child.
+        if (profileDoc.parentId !== me) throw new Error("Not permitted");
+        const perms = ownerPerms(me);
         const normalized = normalizeWord(word);
 
         await db().createDocument(
           DB_ID, COLLECTIONS.wordAttempts, ID.unique(),
-          { playerId, word: normalized, listId: listId || "", mode, correct },
+          { parentId: me, playerId, word: normalized, listId: listId || "", mode, correct },
           perms
         );
 
         // Recompute mastery from the full history for this word.
         const { documents } = await db().listDocuments(
           DB_ID, COLLECTIONS.wordAttempts,
-          [Query.equal("playerId", playerId), Query.equal("word", normalized), Query.orderDesc("$createdAt")],
+          [
+            Query.equal("parentId", me),
+            Query.equal("playerId", playerId),
+            Query.equal("word", normalized),
+            Query.orderDesc("$createdAt"),
+          ],
           100
         );
         const attempts = documents.length;
@@ -539,7 +595,7 @@ export function createAppwriteBackend() {
         // Upsert by deterministic document ID.
         const masteryId = `${playerId}_${normalized}`;
         const payload = {
-          playerId, word: normalized,
+          parentId: me, playerId, word: normalized,
           attempts: m.attempts,
           correctAttempts: m.correct_attempts,
           incorrectAttempts: m.incorrect_attempts,
@@ -558,7 +614,9 @@ export function createAppwriteBackend() {
 
       async list(playerId) {
         const { documents } = await db().listDocuments(
-          DB_ID, COLLECTIONS.mastery, [Query.equal("playerId", playerId)], 500
+          DB_ID, COLLECTIONS.mastery,
+          [Query.equal("parentId", requireParent()), Query.equal("playerId", playerId)],
+          500
         );
         return documents.map(mapMastery);
       },
@@ -566,7 +624,11 @@ export function createAppwriteBackend() {
       async listAttempts(playerId) {
         const { documents } = await db().listDocuments(
           DB_ID, COLLECTIONS.wordAttempts,
-          [Query.equal("playerId", playerId), Query.orderDesc("$createdAt")],
+          [
+            Query.equal("parentId", requireParent()),
+            Query.equal("playerId", playerId),
+            Query.orderDesc("$createdAt"),
+          ],
           200
         );
         return documents.map((a) => ({
@@ -583,8 +645,10 @@ export function createAppwriteBackend() {
 
     progress: {
       async get(playerId) {
+        const me = requireParent();
         const profileDoc = await db().getDocument(DB_ID, COLLECTIONS.playerProfiles, playerId);
-        const perms = ownerPerms(profileDoc.parentId);
+        if (profileDoc.parentId !== me) throw new Error("Not permitted");
+        const perms = ownerPerms(me);
         try {
           const doc = await db().getDocument(DB_ID, COLLECTIONS.progress, playerId);
           return {
@@ -611,7 +675,9 @@ export function createAppwriteBackend() {
       },
 
       async save(playerId, d) {
+        const me = requireParent();
         const profileDoc = await db().getDocument(DB_ID, COLLECTIONS.playerProfiles, playerId);
+        if (profileDoc.parentId !== me) throw new Error("Not permitted");
         const payload = {};
         if (d.unlocked_kingdoms) payload.unlockedKingdoms = d.unlocked_kingdoms;
         if (d.current_kingdom !== undefined) payload.currentKingdom = d.current_kingdom;
@@ -638,10 +704,12 @@ export function createAppwriteBackend() {
       },
       async listPlayerAchievements(playerId) {
         const { documents } = await db().listDocuments(
-          DB_ID, COLLECTIONS.playerAchievements, [Query.equal("playerId", playerId)], 100
+          DB_ID, COLLECTIONS.playerAchievements,
+          [Query.equal("playerId", playerId)], 100
         );
         return documents.map((d) => d.achievementId);
       },
+
       async unlock(playerId, achievementId) {
         const profileDoc = await db().getDocument(DB_ID, COLLECTIONS.playerProfiles, playerId);
         const id = `${playerId}_${achievementId}`;
@@ -659,7 +727,8 @@ export function createAppwriteBackend() {
       },
       async listPlayerInventory(playerId) {
         const { documents } = await db().listDocuments(
-          DB_ID, COLLECTIONS.playerInventory, [Query.equal("playerId", playerId)], 200
+          DB_ID, COLLECTIONS.playerInventory,
+          [Query.equal("playerId", playerId)], 200
         );
         return documents.map((d) => ({
           player_id: d.playerId, item_id: d.itemId,

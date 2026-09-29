@@ -127,7 +127,9 @@ const COLLECTIONS = {
     ],
   },
   word_attempts: {
+    preexisting: ["parentId"],
     attributes: [
+      str("parentId", 64, true),
       str("playerId", 64, true),
       str("word", 60, true),
       str("listId", 64),
@@ -135,12 +137,14 @@ const COLLECTIONS = {
       bool("correct", true),
     ],
     indexes: [
-      { key: "idx_player", attributes: ["playerId"], orders: ["ASC"] },
-      { key: "idx_player_word", attributes: ["playerId", "word"], orders: ["ASC", "ASC"] },
+      { key: "idx_parent_player", attributes: ["parentId", "playerId"], orders: ["ASC", "ASC"] },
+      { key: "idx_parent_player_word", attributes: ["parentId", "playerId", "word"], orders: ["ASC", "ASC", "ASC"] },
     ],
   },
   player_word_mastery: {
+    preexisting: ["parentId"],
     attributes: [
+      str("parentId", 64, true),
       str("playerId", 64, true),
       str("word", 60, true),
       int("attempts", false, 0),
@@ -152,8 +156,8 @@ const COLLECTIONS = {
       str("lastAttemptOn", 40),
     ],
     indexes: [
-      { key: "idx_player", attributes: ["playerId"], orders: ["ASC"] },
-      { key: "idx_player_word", attributes: ["playerId", "word"], orders: ["ASC", "ASC"], unique: true },
+      { key: "idx_parent_player", attributes: ["parentId", "playerId"], orders: ["ASC", "ASC"] },
+      { key: "idx_parent_player_word", attributes: ["parentId", "playerId", "word"], orders: ["ASC", "ASC", "ASC"], unique: true },
     ],
   },
   player_progress: {
@@ -219,6 +223,7 @@ async function main() {
 
   // 2. Collections
   const failed = new Set();
+  const warned = new Set();
   const missingScopes = new Set();
   const noteMissing = (err) => {
     const m = err?.message?.match(/missing scopes \((.*?)\)/);
@@ -240,10 +245,16 @@ async function main() {
         collectionId = name;
         console.log(`  + created collection "${name}"`);
       } catch (err) {
-        noteMissing(err);
-        failed.add(`collection "${name}"`);
-        console.error(`  ! could not create collection "${name}": ${err.message}`);
-        continue;
+        // A missing collections.read scope makes the existence check above
+        // throw, so fall through to create — treat "already exists" as done.
+        if (err.message.includes("already exists")) {
+          console.log(`  ✓ collection "${name}" exists`);
+        } else {
+          noteMissing(err);
+          failed.add(`collection "${name}"`);
+          console.error(`  ! could not create collection "${name}": ${err.message}`);
+          continue;
+        }
       }
     }
 
@@ -259,17 +270,20 @@ async function main() {
     for (const attr of def.attributes) {
       if (existing.includes(attr.key)) continue;
       let lastErr = null;
+      // Newly-added attributes on a populated collection must be optional,
+      // otherwise Appwrite rejects the create.
+      const required = def.preexisting?.includes(attr.key) ? false : attr.required;
       try {
         if (attr.type === "string") {
-          await db.createStringAttribute(DB_ID, collectionId, attr.key, attr.size, attr.required, attr.default);
+          await db.createStringAttribute(DB_ID, collectionId, attr.key, attr.size, required, attr.default);
         } else if (attr.type === "integer") {
-          await db.createIntegerAttribute(DB_ID, collectionId, attr.key, attr.required, attr.default);
+          await db.createIntegerAttribute(DB_ID, collectionId, attr.key, required, attr.default);
         } else if (attr.type === "double") {
-          await db.createFloatAttribute(DB_ID, collectionId, attr.key, attr.required, attr.default);
+          await db.createFloatAttribute(DB_ID, collectionId, attr.key, required, attr.default);
         } else if (attr.type === "boolean") {
-          await db.createBooleanAttribute(DB_ID, collectionId, attr.key, attr.required, attr.default);
+          await db.createBooleanAttribute(DB_ID, collectionId, attr.key, required, attr.default);
         } else if (attr.type === "datetime") {
-          await db.createDatetimeAttribute(DB_ID, collectionId, attr.key, attr.required);
+          await db.createDatetimeAttribute(DB_ID, collectionId, attr.key, required);
         }
       } catch (e) {
         lastErr = e;
@@ -294,14 +308,19 @@ async function main() {
       for (const idx of def.indexes) {
         if (haveIndexes.includes(idx.key)) continue;
         try {
+          // Signature: createIndex(db, collection, key, type, attributes, orders)
+          // `type` is "key" for a normal index or "unique" for a unique one.
           await db.createIndex(
             DB_ID, collectionId, idx.key,
-            idx.attributes, idx.orders, idx.unique ? true : false
+            idx.unique ? "unique" : "key",
+            idx.attributes, idx.orders
           );
           console.log(`\n    + index ${collectionId}.${idx.key}`);
         } catch (err) {
+          // Indexes are a performance optimisation, not a correctness
+          // requirement for small datasets — warn but do not fail.
           noteMissing(err);
-          failed.add(`index ${collectionId}.${idx.key}`);
+          warned.add(`index ${collectionId}.${idx.key}`);
           console.log(`\n    ! index ${collectionId}.${idx.key}: ${err.message}`);
         }
       }
@@ -309,6 +328,13 @@ async function main() {
     if (![...failed].some((f) => String(f).startsWith(collectionId))) {
       console.log(`  ✓ ${name} ready`);
     }
+  }
+
+  if (warned.size) {
+    console.warn(
+      "\n⚠️  " + warned.size + " index(es) were not created. Queries still work, but " +
+        "may be slower on large lists. Add indexes manually if needed.\n"
+    );
   }
 
   if (failed.size || missingScopes.size) {
@@ -321,8 +347,8 @@ async function main() {
     }
     console.error(
       "\n   Fix: Appwrite Console → your project → Settings → API Keys\n" +
-        "   → open this key → add the scopes above, or create a new key with\n" +
-        '   scope "Any". Then re-run: npm run setup:appwrite\n'
+        "   → open this key → tick Collections / Attributes / Indexes\n" +
+        '   (Read + Write), then re-run: npm run setup:appwrite\n'
     );
     process.exit(1);
   }
