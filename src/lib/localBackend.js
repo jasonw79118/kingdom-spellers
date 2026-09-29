@@ -6,7 +6,7 @@
 // VITE_SUPABASE_ANON_KEY — no component code changes needed.
 
 import { uid, normalizeWord, todayKey } from "./utils";
-import { seedDictionary, fallbackDefinition } from "./seedDictionary";
+import { seedDictionary, fallbackDefinition, starterWordsForGrade } from "./seedDictionary";
 
 const NS = "ks2_";
 
@@ -204,6 +204,20 @@ const localLists = {
     };
     lists.push(list);
     write("spelling_lists", lists);
+    return list;
+  },
+
+  // Create a starter list for a new player if they don't have one yet.
+  async createDefaultFor(player) {
+    const existing = read("spelling_lists").filter((l) => l.player_id === player.id);
+    if (existing.length) return existing[0];
+    const list = await this.create({
+      parent_id: player.parent_id,
+      player_id: player.id,
+      title: `Starter Words — Grade ${player.grade_level}`,
+      source: "default",
+    });
+    await this.saveWords(list.id, starterWordsForGrade(player.grade_level, 20));
     return list;
   },
 

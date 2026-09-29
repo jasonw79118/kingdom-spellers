@@ -7,9 +7,9 @@ import { backend } from "../lib/backend";
 import PlayerCard from "../components/PlayerCard";
 
 const PARENT_CONTROLS = [
-  { icon: "📝", label: "New Spelling List", to: "/lists/new", soon: true },
-  { icon: "📷", label: "Scan Spelling List", to: "/lists/scan", soon: true },
-  { icon: "📚", label: "My Lists", to: "/lists", soon: true },
+  { icon: "📝", label: "New Spelling List", to: "/lists/new", soon: false },
+  { icon: "📷", label: "Scan Spelling List", to: "/lists/scan", soon: false },
+  { icon: "📚", label: "My Lists", to: "/lists", soon: false },
   { icon: "📊", label: "Progress", to: "/progress", soon: true },
   { icon: "👤", label: "Players", to: "/players", soon: false },
   { icon: "⚙️", label: "Settings", to: "/settings", soon: true },
@@ -38,9 +38,9 @@ export default function DashboardPage() {
   }, [load]);
 
   const handlePlay = (profile) => {
-    // The new game modes arrive in later phases; for now, play routes to
-    // the classic game so children always have something to do.
-    navigate("/classic", { state: { playerId: profile.id, playerName: profile.name } });
+    // The new practice/game modes arrive in Phase 5; for now, play routes to
+    // the spelling lists so children always have something to do.
+    navigate("/lists", { state: { playerId: profile.id, playerName: profile.name } });
   };
 
   const firstName = user?.name?.split(" ")[0] || "there";

@@ -5,8 +5,8 @@ import { useAuth } from "../context/AuthContext";
 
 const NAV = [
   { to: "/", label: "Home", icon: "🏠", end: true },
+  { to: "/lists", label: "Lists", icon: "📚" },
   { to: "/players", label: "Players", icon: "👤" },
-  { to: "/classic", label: "Classic", icon: "⚔️" },
 ];
 
 export default function Layout() {

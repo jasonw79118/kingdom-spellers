@@ -90,25 +90,55 @@ enable the **Google** provider and add your OAuth credentials.
 │   │   ├── supabaseBackend.js# Supabase implementation of the interface
 │   │   ├── localBackend.js   # localStorage demo implementation
 │   │   ├── seedDictionary.js # Built-in word definitions (from v1 lists)
+│   │   ├── ocr.js            # Tesseract.js OCR + word extraction
 │   │   ├── speech.js         # Text-to-speech helpers
 │   │   └── utils.js          # XP/levels, shuffle, weighted sampling, etc.
 │   ├── components/
 │   │   ├── Layout.jsx        # Top bar + mobile bottom nav
 │   │   ├── Avatar.jsx        # Customizable SVG adventurer
 │   │   ├── PlayerCard.jsx    # Child profile card
+│   │   ├── WordCard.jsx      # Word + definition + text-to-speech
 │   │   ├── StatPill.jsx      # Small stat display
 │   │   └── ProgressBar.jsx   # XP / progress bar
 │   ├── pages/
 │   │   ├── LoginPage.jsx     # Sign in / create account
 │   │   ├── DashboardPage.jsx # Parent home + player cards
 │   │   ├── PlayersPage.jsx   # Manage child profiles + avatar editor
-│   │   └── ClassicGamePage.jsx# Legacy v1 game (preserved at /classic)
-│   └── legacy/               # Original v1 game (preserved, not yet replaced)
-│       ├── KingdomSpellers.jsx
-│       ├── legacy.css
-│       └── data/             # Original word lists
+│   │   ├── ListsPage.jsx     # All spelling lists
+│   │   ├── ListEditorPage.jsx# Type / paste words + review definitions
+│   │   └── ScanListPage.jsx  # Camera / upload + OCR review
+│   └── data/                 # Seed word lists (grade 1 & 2)
 └── vite.config.js            # Base path, build, dev server config
 ```
+
+---
+
+## Spelling lists
+
+Lists can be created three ways:
+
+1. **Type words** — add one at a time (Enter or the Add button). Commas work too.
+2. **Paste words** — paste many at once, one per line or comma-separated.
+   A **📋 Paste from clipboard** button reads the system clipboard directly.
+3. **Scan a photo** — open the phone camera or upload an image. Text is read
+   **on-device** with Tesseract.js (no paid API, nothing uploaded), then
+   filtered down to likely spelling words.
+
+Every list goes through a **review step** before saving: definitions are
+looked up automatically and can be edited per word. OCR results are *never*
+saved without review — you check/uncheck each word and can fix misreads
+inline.
+
+### Starter lists
+
+Every new player automatically receives a **"Starter Words — Grade N"** list
+(20 short, grade-appropriate words) so the game is playable immediately.
+Existing players without a list get one the first time they open the Lists page.
+
+### Text-to-speech
+
+Each word card has three audio buttons: 🔊 hear the word, 📖 hear the
+definition, 💬 hear the example sentence.
 
 ---
 
@@ -157,8 +187,8 @@ SPA fallback configuration.
 The rebuild is planned in phases — one at a time, testing after each:
 
 - [x] **Phase 1** — Refactor to Vite, Supabase setup, auth, dashboard, player profiles
-- [ ] **Phase 2** — Spelling list database, manual/paste entry, dictionary definitions, text-to-speech
-- [ ] **Phase 3** — Image upload, Tesseract OCR, OCR review screen
+- [x] **Phase 2** — Spelling list database, manual/paste entry, dictionary definitions, text-to-speech
+- [x] **Phase 3** — Image upload, Tesseract OCR, OCR review screen, starter lists
 - [ ] **Phase 4** — Mastery system, adaptive practice, progress reports
 - [ ] **Phase 5** — Rebuild core gameplay, castle/kingdom progression, animations
 - [ ] **Phase 6** — Additional game modes, overworld, unlockables, achievements

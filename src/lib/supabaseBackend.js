@@ -2,7 +2,7 @@
 // Used automatically when VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY are set.
 
 import { normalizeWord } from "./utils";
-import { seedDictionary, fallbackDefinition } from "./seedDictionary";
+import { seedDictionary, fallbackDefinition, starterWordsForGrade } from "./seedDictionary";
 
 let seeded = false;
 
@@ -142,6 +142,27 @@ export function createSupabaseBackend(supabase) {
         const { data, error } = await supabase.from("spelling_lists").insert(d).select().single();
         if (error) throw error;
         return data;
+      },
+      async createDefaultFor(player) {
+        const { data: existing } = await supabase
+          .from("spelling_lists")
+          .select("*")
+          .eq("player_id", player.id)
+          .limit(1);
+        if (existing && existing.length) return existing[0];
+        const { data: list, error } = await supabase
+          .from("spelling_lists")
+          .insert({
+            parent_id: player.parent_id,
+            player_id: player.id,
+            title: `Starter Words — Grade ${player.grade_level}`,
+            source: "default",
+          })
+          .select()
+          .single();
+        if (error) throw error;
+        await this.saveWords(list.id, starterWordsForGrade(player.grade_level, 20));
+        return list;
       },
       async remove(id) {
         const { error } = await supabase.from("spelling_lists").delete().eq("id", id);

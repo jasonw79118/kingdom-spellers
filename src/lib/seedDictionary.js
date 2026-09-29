@@ -3,8 +3,8 @@
 // app ships with real kid-friendly definitions out of the box.
 // In Supabase mode these are upserted on first run (see backend.js).
 
-import { firstGradeWords } from "../legacy/data/firstgradelist";
-import { secondGradeWords } from "../legacy/data/secondgradelist";
+import { firstGradeWords } from "../data/firstgradelist";
+import { secondGradeWords } from "../data/secondgradelist";
 import { normalizeWord } from "./utils";
 
 function toEntries(source, grade) {
@@ -44,4 +44,26 @@ export const fallbackDictionary = {
 
 export function fallbackDefinition(word) {
   return fallbackDictionary[normalizeWord(word)] || "";
+}
+
+// Pick a grade-appropriate set of starter words for a player's default list.
+// Shorter, high-frequency words first so a beginner list isn't overwhelming.
+export function starterWordsForGrade(grade = 1, count = 20) {
+  const pool =
+    Number(grade) <= 1
+      ? Object.keys(firstGradeWords)
+      : [...Object.keys(firstGradeWords), ...Object.keys(secondGradeWords)];
+
+  // Sort by length (short = easier) then alphabetically for stability.
+  const sorted = [...new Set(pool)]
+    .map((w) => w.toLowerCase())
+    .sort((a, b) => a.length - b.length || a.localeCompare(b));
+
+  return sorted.slice(0, count).map((word) => ({
+    word,
+    kid_definition: firstGradeWords[word] || secondGradeWords[word] || "",
+    definition: firstGradeWords[word] || secondGradeWords[word] || "",
+    example_sentence: "",
+    part_of_speech: "",
+  }));
 }

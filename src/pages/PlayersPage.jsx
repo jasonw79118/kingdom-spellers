@@ -180,7 +180,13 @@ export default function PlayersPage() {
       if (editId) {
         await backend.profiles.update(editId, payload);
       } else {
-        await backend.profiles.create(payload);
+        const created = await backend.profiles.create(payload);
+        // Give every new player a starter list so they can play right away.
+        try {
+          await backend.lists.createDefaultFor(created);
+        } catch (err) {
+          console.error("Could not create starter list", err);
+        }
       }
       setShowForm(false);
       setForm(emptyForm);

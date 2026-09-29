@@ -6,7 +6,10 @@ import Layout from "./components/Layout";
 import LoginPage from "./pages/LoginPage";
 import DashboardPage from "./pages/DashboardPage";
 import PlayersPage from "./pages/PlayersPage";
-import ClassicGamePage from "./pages/ClassicGamePage";
+import ListsPage from "./pages/ListsPage";
+import ListEditorPage from "./pages/ListEditorPage";
+import ScanListPage from "./pages/ScanListPage";
+
 
 function Protected({ children }) {
   const { user, loading } = useAuth();
@@ -50,7 +53,10 @@ export default function App() {
           >
             <Route path="/" element={<DashboardPage />} />
             <Route path="/players" element={<PlayersPage />} />
-            <Route path="/classic" element={<ClassicGamePage />} />
+            <Route path="/lists" element={<ListsPage />} />
+            <Route path="/lists/new" element={<ListEditorPage />} />
+            <Route path="/lists/scan" element={<ScanListPage />} />
+            <Route path="/lists/:listId" element={<ListEditorPage />} />
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
