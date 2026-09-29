@@ -218,6 +218,12 @@ async function main() {
   }
 
   // 2. Collections
+  const failed = new Set();
+  const missingScopes = new Set();
+  const noteMissing = (err) => {
+    const m = err?.message?.match(/missing scopes \((.*?)\)/);
+    if (m) for (const s of JSON.parse(m[1])) missingScopes.add(s);
+  };
   for (const [name, def] of Object.entries(COLLECTIONS)) {
     let collectionId = name;
     try {
@@ -234,6 +240,8 @@ async function main() {
         collectionId = name;
         console.log(`  + created collection "${name}"`);
       } catch (err) {
+        noteMissing(err);
+        failed.add(`collection "${name}"`);
         console.error(`  ! could not create collection "${name}": ${err.message}`);
         continue;
       }
@@ -246,24 +254,30 @@ async function main() {
       existing = res.attributes.map((a) => a.key);
     } catch { /* none yet */ }
 
+    const noteMissingAttr = noteMissing;
+
     for (const attr of def.attributes) {
       if (existing.includes(attr.key)) continue;
+      let lastErr = null;
       try {
-        await db.createStringAttribute(DB_ID, collectionId, attr.key, attr.size, attr.required, attr.default);
-      } catch (e) {
-        if (attr.type !== "string") {
-          try {
-            if (attr.type === "integer") {
-              await db.createIntegerAttribute(DB_ID, collectionId, attr.key, attr.required, attr.default);
-            } else if (attr.type === "double") {
-              await db.createFloatAttribute(DB_ID, collectionId, attr.key, attr.required, attr.default);
-            } else if (attr.type === "boolean") {
-              await db.createBooleanAttribute(DB_ID, collectionId, attr.key, attr.required, attr.default);
-            } else if (attr.type === "datetime") {
-              await db.createDatetimeAttribute(DB_ID, collectionId, attr.key, attr.required);
-            }
-          } catch { /* report below */ }
+        if (attr.type === "string") {
+          await db.createStringAttribute(DB_ID, collectionId, attr.key, attr.size, attr.required, attr.default);
+        } else if (attr.type === "integer") {
+          await db.createIntegerAttribute(DB_ID, collectionId, attr.key, attr.required, attr.default);
+        } else if (attr.type === "double") {
+          await db.createFloatAttribute(DB_ID, collectionId, attr.key, attr.required, attr.default);
+        } else if (attr.type === "boolean") {
+          await db.createBooleanAttribute(DB_ID, collectionId, attr.key, attr.required, attr.default);
+        } else if (attr.type === "datetime") {
+          await db.createDatetimeAttribute(DB_ID, collectionId, attr.key, attr.required);
         }
+      } catch (e) {
+        lastErr = e;
+        noteMissing(e);
+        failed.add(`attribute ${collectionId}.${attr.key}`);
+      }
+      if (lastErr) {
+        console.log(`\n    ! attribute ${collectionId}.${attr.key}: ${lastErr.message}`);
       }
       process.stdout.write(".");
     }
@@ -286,11 +300,31 @@ async function main() {
           );
           console.log(`\n    + index ${collectionId}.${idx.key}`);
         } catch (err) {
+          noteMissing(err);
+          failed.add(`index ${collectionId}.${idx.key}`);
           console.log(`\n    ! index ${collectionId}.${idx.key}: ${err.message}`);
         }
       }
     }
-    console.log(`  ✓ ${name} ready`);
+    if (![...failed].some((f) => String(f).startsWith(collectionId))) {
+      console.log(`  ✓ ${name} ready`);
+    }
+  }
+
+  if (failed.size || missingScopes.size) {
+    console.error("\n❌ Schema setup INCOMPLETE\n");
+    if (missingScopes.size) {
+      console.error("   API key is missing scope(s): " + [...missingScopes].join(", "));
+    }
+    if (failed.size) {
+      console.error("   Could not create: " + [...failed].join(", "));
+    }
+    console.error(
+      "\n   Fix: Appwrite Console → your project → Settings → API Keys\n" +
+        "   → open this key → add the scopes above, or create a new key with\n" +
+        '   scope "Any". Then re-run: npm run setup:appwrite\n'
+    );
+    process.exit(1);
   }
 
   console.log("\n✅ Appwrite schema is ready.\n");
