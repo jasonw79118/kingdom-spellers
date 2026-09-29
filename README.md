@@ -350,39 +350,59 @@ of voice selection makes a robotic OS voice sound natural, because the ceiling
 is the operating system. macOS/iOS and current Windows ship good neural voices;
 Linux, older Windows and some Android builds do not.
 
-So speech has two providers:
+So speech has two tiers:
 
-| Provider | Quality | Needs |
-|----------|---------|-------|
-| **cloud** | Google Cloud TTS `Neural2` / `Studio` — sounds like a person reading | a key or proxy |
+| Tier | Quality | Needs |
+|------|---------|-------|
+| **cloud** | ElevenLabs, or Google `Neural2`/`Studio` — sounds like a person reading | a free key |
 | **local** | the best voice installed on the device | nothing |
 
 `auto` (the default) uses the cloud when it's configured, otherwise the best
-device voice. **If the cloud is unreachable it silently falls back to the device
-voice**, so a child is never left without audio.
+device voice.
 
-**To enable natural voices**, paste a proxy URL or a Google Cloud TTS key into
-the voice picker on the practice screen — no rebuild needed. For production,
-prefer a serverless proxy so the key stays server-side:
+**The free tier is plenty.** ElevenLabs gives 10,000 characters/month at
+1 credit/char. This app's entire seed dictionary is 699 words / **3,842
+characters** — under half the monthly allowance, and that's speaking *every*
+word once. Because audio is cached permanently, a word is billed **once, ever**,
+not once per replay. A 20-word practice list costs ~104 characters, so the free
+tier covers roughly **96 full sessions per month** even with no cache hits.
+
+**To enable it**, open the voice picker on the practice screen and paste a free
+ElevenLabs key (*elevenlabs.io → Profile → API Keys*), then hit **Save & test
+key**. No rebuild needed. For production, prefer a serverless proxy so the key
+stays server-side and can never be read from the page:
 
 ```env
 VITE_TTS_PROVIDER=auto
-VITE_TTS_PROXY=https://your-worker.dev/tts      # recommended
-# or, browser-visible (anyone can extract it):
-# VITE_GOOGLE_TTS_KEY=AIza…
+VITE_TTS_CLOUD=elevenlabs          # or: google
+VITE_TTS_PROXY=https://your-worker.dev/tts    # recommended
+# or a browser-visible key (anyone can extract it):
+# VITE_ELEVENLABS_API_KEY=sk_…
 ```
 
 The proxy receives a Google-shaped JSON body and must return
 `{ "audioContent": "<base64 mp3>" }`.
 
-Generated audio is **cached** (in memory, then IndexedDB, capped at 400 clips),
-so each word is synthesised once per device and replays instantly. The current
-and next word are prefetched, so "Hear word" never waits on the network.
+**Reliability.** A missing, rejected, or exhausted key never leaves a child
+without audio:
 
-Local voices are also ranked properly now: neural/premium/enhanced names score
+- the cloud falls back to the device voice, with a plain-language reason
+  ("That key was rejected. Check you copied the whole thing.");
+- a **circuit breaker** then stops retrying for 10 minutes, so a broken key
+  doesn't add a network wait to every tap on "Hear word" — the second tap
+  falls back instantly;
+- the picker's **Save & test key** verifies a key immediately, and the reported
+  voice reflects reality rather than assuming success.
+
+Generated audio is **cached** (in memory, then IndexedDB, capped at 400 clips),
+namespaced by service, voice and speed so switching settings never replays the
+wrong clip. The current and next word are prefetched, so "Hear word" never
+waits on the network.
+
+Local voices are also ranked properly: neural/premium/enhanced names score
 highest, Android's low-quality `Compact` set is pushed to the bottom, and
 offline voices are preferred. If the device only has robotic voices the picker
-says so and suggests the cloud. A **slower (0.6×)** toggle is available from
+says so and points at the free cloud key. A **slower** toggle is available from
 the picker and as a one-tap 🐢 button while spelling.
 
 ### Adaptive learning

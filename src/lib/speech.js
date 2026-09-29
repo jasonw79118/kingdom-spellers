@@ -1,26 +1,29 @@
 // Voice engine.
 //
-// Why there are two providers:
+// Why there is a cloud option at all:
 //   The Web Speech API can ONLY use voices installed on the device. No amount
 //   of voice selection makes a robotic OS voice sound natural — the ceiling is
 //   the operating system. macOS/iOS and up-to-date Windows ship good neural
 //   voices, but plenty of devices (Linux, older Windows, some Android builds)
 //   have only low-quality ones.
 //
-//   So the engine has two providers:
-//     cloud — Google Cloud TTS (Neural2 / Studio / Journey) for genuinely
-//             natural speech on every device
+//   So speech has two tiers:
+//     cloud — ElevenLabs (default) or Google Cloud TTS, for genuinely natural
+//             speech on every device
 //     local — the best OS voice available, used automatically as a fallback
 //
-// Generated cloud audio is cached (memory + IndexedDB), so each word is
-// synthesised once per device and replays instantly.
+// Cost: both cloud services have free tiers, and this app is well inside them.
+// The entire seed word list (~699 words, 3,842 characters) costs less than
+// half of ElevenLabs' 10,000 monthly characters, and generated audio is cached
+// permanently — a word is billed once, ever, not once per replay.
 //
 // Configuration (optional, via .env):
 //   VITE_TTS_PROVIDER=auto|cloud|local
-//   VITE_GOOGLE_TTS_KEY=...        // direct key (visible in the browser!)
+//   VITE_TTS_CLOUD=elevenlabs|google
 //   VITE_TTS_PROXY=https://...     // preferred: a serverless proxy
 //
-// A parent can also paste a key into the voice picker at runtime.
+// A parent can also paste a key into the voice picker at runtime — no rebuild
+// needed.
 
 import {
   cacheGet, cachePut, cacheClear, cacheStats, memoryGet, memoryPut,
@@ -33,6 +36,7 @@ const PREF_KEY = "ks2_voice_pref";
 const SLOW_KEY = "ks2_speak_slow";
 const PROVIDER_KEY = "ks2_tts_provider";
 const API_KEY_STORE = "ks2_tts_apikey";
+const CLOUD_VOICE_KEY = "ks2_cloud_voice";
 
 export const PROVIDERS = { AUTO: "auto", CLOUD: "cloud", LOCAL: "local" };
 
@@ -61,17 +65,85 @@ export function setProxyUrl(url) {
   else localStorage.removeItem("ks2_tts_proxy");
 }
 
+// Keys are stored per provider, so switching between ElevenLabs and Google
+// doesn't clobber the other one's credentials. An env-supplied key is the
+// fallback, which lets a deployment ship a working voice without anyone having
+// to paste a key.
 export function getApiKey() {
-  return import.meta.env.VITE_GOOGLE_TTS_KEY || localStorage.getItem(API_KEY_STORE) || "";
+  const provider = getCloudProvider();
+  const fromEnv =
+    provider === CLOUD_SERVICES.GOOGLE
+      ? import.meta.env.VITE_GOOGLE_TTS_KEY
+      : import.meta.env.VITE_ELEVENLABS_API_KEY;
+  return localStorage.getItem(`${API_KEY_STORE}:${provider}`) || fromEnv || "";
 }
 
 export function setApiKey(key) {
-  if (key) localStorage.setItem(API_KEY_STORE, key.trim());
-  else localStorage.removeItem(API_KEY_STORE);
+  const provider = getCloudProvider();
+  if (key) localStorage.setItem(`${API_KEY_STORE}:${provider}`, key.trim());
+  else localStorage.removeItem(`${API_KEY_STORE}:${provider}`);
+}
+
+// Which cloud service to talk to.
+const CLOUD_PROVIDER_KEY = "ks2_cloud_provider";
+export const CLOUD_SERVICES = {
+  ELEVENLABS: "elevenlabs",
+  GOOGLE: "google",
+};
+
+function envCloudService() {
+  const v = import.meta.env.VITE_TTS_CLOUD;
+  if (v === CLOUD_SERVICES.ELEVENLABS || v === CLOUD_SERVICES.GOOGLE) return v;
+  // Default to ElevenLabs: the free tier is generous enough for this app
+  // (the whole seed dictionary is only ~3.8k characters) and the voices are
+  // the most natural of the options.
+  return CLOUD_SERVICES.ELEVENLABS;
+}
+
+export function getCloudProvider() {
+  return localStorage.getItem(CLOUD_PROVIDER_KEY) || envCloudService();
+}
+
+export function setCloudProvider(id) {
+  localStorage.setItem(CLOUD_PROVIDER_KEY, id);
 }
 
 export function isCloudConfigured() {
   return Boolean(getProxyUrl() || getApiKey());
+}
+
+// Live test used by the picker so a bad key is caught immediately rather than
+// silently falling back mid-lesson.
+export async function testCloudKey() {
+  try {
+    await getCloudClip("hello", getCloudVoice(), 0.95, { skipCache: true });
+    resetBreaker();
+    return { ok: true };
+  } catch (err) {
+    const why = friendlyError(err);
+    // Trip the breaker so the rest of the UI reports the truth: a rejected key
+    // should not keep claiming the app is speaking with the cloud voice.
+    tripBreaker();
+    try { localStorage.setItem(`${BREAKER_KEY}:why`, why); } catch { /* ignore */ }
+    return { ok: false, error: why };
+  }
+}
+
+function friendlyError(err) {
+  const msg = String(err?.message || err || "");
+  if (/401|unauthorized|invalid.*key|api key/i.test(msg)) {
+    return "That key was rejected. Check you copied the whole thing.";
+  }
+  if (/402|quota|credit/i.test(msg)) {
+    return "Out of credits for this month. The device voice is being used instead.";
+  }
+  if (/429|rate/i.test(msg)) {
+    return "Too many requests. Try again in a moment.";
+  }
+  if (/fetch|network|Failed to fetch/i.test(msg)) {
+    return "Could not reach the service. Check your connection.";
+  }
+  return msg || "Unknown error";
 }
 
 export function getSlowPref() {
@@ -166,10 +238,43 @@ export function warmVoices() {
 }
 
 // ---------------------------------------------------------------------------
-// Cloud voices (Google Cloud Text-to-Speech)
+// Cloud providers
 // ---------------------------------------------------------------------------
-// Neural2 / Studio / Journey voices. These sound like a person reading.
-export const CLOUD_VOICES = [
+// Two services, both of which need an API key, both of which have a free tier.
+//
+//   ElevenLabs — the most natural sounding. Free tier is 10,000 characters per
+//                month at 1 credit/char. The entire seed word list in this app
+//                is only ~3,842 characters, and audio is cached permanently,
+//                so each word is billed once, ever. The free tier is
+//                comfortably enough for a family.
+//   Google     — Neural2/Studio voices. Slightly less expressive than
+//                ElevenLabs, but a useful alternative.
+//
+// Both fall back to the device voice if the key is missing, invalid, or out of
+// credits, so a child is never left without audio.
+
+// ElevenLabs "premade" voices. These are the stock public voices and need no
+// account-specific setup. Descriptions come from the ElevenLabs voice library.
+const ELEVENLABS_VOICES = [
+  { id: "21m00Tcm4TlvDq8ikWAM", label: "Rachel — warm, clear female (US)" },
+  { id: "EXAVITQu4vr4xnSDxMaL", label: "Sarah — soft, calm female (US)" },
+  { id: "pNInz6obpgDQGcFmaJgB", label: "Elli — young, bright female (US)" },
+  { id: "MF3mGyEYCl7XYWbV9V6O", label: "Grace — friendly female (US)" },
+  { id: "XrExE9yKIg1WjnnlVkGX", label: "Lily — cheerful, storytelling female (US)" },
+  { id: "ThT5KcBeYPX3keUQqHPh", label: "Dorothy — gentle older female (US)" },
+  { id: "Xb7hH8MSUJpSbSDYk0k2", label: "Alice — poised female (UK)" },
+  { id: "IKne3meq5aSn9XLyUdCD", label: "Charlotte — warm female (UK)" },
+  { id: "GBv7mTt0atIp3Br8iCZE", label: "Alice — female (UK)" },
+  { id: "nPczCjzI2devNBz1zQrb", label: "Brian — deep, steady male (US)" },
+  { id: "VR6AewLTigWG4xSOukaG", label: "Arnold — gravelly male (US)" },
+  { id: "yoZ06aMxZJJ28mfd3POQ", label: "Sam — raspy male (US)" },
+  { id: "TxGEqnHWrfWFTfGW9XjX", label: "Josh — young male (US)" },
+  { id: "ZQe5CZNOzWyzPSCn5a3c", label: "James — deep male (UK)" },
+  { id: "onwK4e9ZLuTAKqWW03F9", label: "Daniel — authoritative male (UK)" },
+];
+
+// Google Neural2 / Studio voices. These sound like a person reading.
+const GOOGLE_VOICES = [
   { id: "en-US-Neural2-F", label: "Aria — warm female (US)" },
   { id: "en-US-Neural2-D", label: "D — male (US)" },
   { id: "en-US-Neural2-C", label: "C — female (US)" },
@@ -182,49 +287,9 @@ export const CLOUD_VOICES = [
   { id: "en-AU-Neural2-A", label: "Nathan — Australian male" },
 ];
 
-const CLOUD_VOICE_KEY = "ks2_cloud_voice";
-export function getCloudVoice() {
-  const pref = localStorage.getItem(CLOUD_VOICE_KEY);
-  const valid = CLOUD_VOICES.some((v) => v.id === pref);
-  return valid ? pref : CLOUD_VOICES[0].id;
-}
-export function setCloudVoice(id) {
-  localStorage.setItem(CLOUD_VOICE_KEY, id);
-}
-
-async function requestCloudAudio(text, voice, rate) {
-  const body = {
-    input: { text },
-    voice: { languageCode: voice.startsWith("en-GB") ? "en-GB" : voice.startsWith("en-AU") ? "en-AU" : "en-US", name: voice },
-    audioConfig: {
-      audioEncoding: "MP3",
-      speakingRate: rate,
-      pitch: 0,
-    },
-  };
-
-  const proxy = getProxyUrl();
-  if (proxy) {
-    const res = await fetch(proxy, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    });
-    if (!res.ok) throw new Error(`Proxy ${res.status}`);
-    const json = await res.json();
-    return json.audioContent || json.audio || null;
-  }
-
-  const key = getApiKey();
-  if (!key) throw new Error("No API key");
-  const res = await fetch(
-    `https://texttospeech.googleapis.com/v1/text:synthesize?key=${encodeURIComponent(key)}`,
-    { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }
-  );
-  if (!res.ok) throw new Error(`TTS ${res.status}`);
-  const json = await res.json();
-  return json.audioContent;
-}
+// Maps a speaking rate (0.5–1.5) onto each service's own scale.
+const rateToGoogle = (rate) => Math.max(0.25, Math.min(4, rate));
+const rateToEleven = (rate) => Math.max(0.7, Math.min(1.2, rate));
 
 function base64ToBlob(b64, mime = "audio/mpeg") {
   const bin = atob(b64);
@@ -233,20 +298,141 @@ function base64ToBlob(b64, mime = "audio/mpeg") {
   return new Blob([bytes], { type: mime });
 }
 
-async function getCloudClip(text, voice, rate) {
-  const key = `g:${voice}:${rate}:${text}`;
-  const mem = memoryGet(key);
-  if (mem) return mem;
+async function requestElevenLabs(text, voice, rate) {
+  // flash_v2_5 is the fastest, cheapest model and plenty good for single
+  // words. Stability is raised and style set to 0 so short words are read
+  // cleanly rather than with a wandering, expressive delivery.
+  const res = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voice}`, {
+    method: "POST",
+    headers: {
+      "xi-api-key": getApiKey(),
+      "Content-Type": "application/json",
+      Accept: "audio/mpeg",
+    },
+    body: JSON.stringify({
+      text,
+      model_id: "eleven_flash_v2_5",
+      voice_settings: {
+        stability: 0.7,
+        similarity_boost: 0.8,
+        style: 0,
+        use_speaker_boost: true,
+        speed: rateToEleven(rate),
+      },
+    }),
+  });
 
-  const hit = await cacheGet(key);
-  if (hit?.blob) {
-    memoryPut(key, hit.blob);
-    return hit.blob;
+  if (!res.ok) {
+    let detail = `ElevenLabs ${res.status}`;
+    try {
+      const j = await res.json();
+      if (j?.detail) {
+        const d = j.detail;
+        detail = typeof d === "string" ? d : d?.message || detail;
+      }
+    } catch { /* body wasn't json */ }
+    throw new Error(detail);
+  }
+  // This endpoint returns raw audio bytes, not JSON.
+  return res.blob();
+}
+
+async function requestGoogle(text, voice, rate) {
+  const body = {
+    input: { text },
+    voice: {
+      languageCode: voice.startsWith("en-GB")
+        ? "en-GB"
+        : voice.startsWith("en-AU")
+        ? "en-AU"
+        : "en-US",
+      name: voice,
+    },
+    audioConfig: { audioEncoding: "MP3", speakingRate: rateToGoogle(rate), pitch: 0 },
+  };
+
+  const key = getApiKey();
+  const res = await fetch(
+    `https://texttospeech.googleapis.com/v1/text:synthesize?key=${encodeURIComponent(key)}`,
+    { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }
+  );
+  if (!res.ok) {
+    let detail = `Google TTS ${res.status}`;
+    try {
+      const j = await res.json();
+      if (j?.error?.message) detail = j.error.message;
+    } catch { /* body wasn't json */ }
+    throw new Error(detail);
+  }
+  const json = await res.json();
+  if (!json.audioContent) throw new Error("No audio returned");
+  return base64ToBlob(json.audioContent);
+}
+
+export function cloudVoicesFor(service = getCloudProvider()) {
+  return service === CLOUD_SERVICES.GOOGLE ? GOOGLE_VOICES : ELEVENLABS_VOICES;
+}
+
+// The voice preference is namespaced per service so switching provider doesn't
+// reset the chosen voice.
+function voiceStorageKey(service) {
+  return `${CLOUD_VOICE_KEY}:${service}`;
+}
+
+export function getCloudVoice(service = getCloudProvider()) {
+  const pref = localStorage.getItem(voiceStorageKey(service));
+  const list = cloudVoicesFor(service);
+  return list.some((v) => v.id === pref) ? pref : list[0].id;
+}
+
+export function setCloudVoice(id, service = getCloudProvider()) {
+  localStorage.setItem(voiceStorageKey(service), id);
+}
+
+// A proxy short-circuits the direct call, so the key can stay server-side.
+// It receives a Google-shaped body for compatibility with the original setup.
+async function requestViaProxy(text, voice, rate) {
+  const res = await fetch(getProxyUrl(), {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      input: { text },
+      voice: {
+        languageCode: voice.startsWith("en-GB") ? "en-GB" : voice.startsWith("en-AU") ? "en-AU" : "en-US",
+        name: voice,
+      },
+      audioConfig: { audioEncoding: "MP3", speakingRate: rateToGoogle(rate), pitch: 0 },
+    }),
+  });
+  if (!res.ok) throw new Error(`Proxy ${res.status}`);
+  const json = await res.json();
+  if (!json.audioContent && !json.audio) throw new Error("Proxy returned no audio");
+  return base64ToBlob(json.audioContent || json.audio);
+}
+
+async function getCloudClip(text, voice, rate, { skipCache = false } = {}) {
+  const service = getCloudProvider();
+  // Namespace the cache key by service, voice and rate so switching provider or
+  // speed never replays the wrong audio.
+  const key = `c:${service}:${voice}:${rate}:${text}`;
+
+  if (!skipCache) {
+    const mem = memoryGet(key);
+    if (mem) return mem;
+    const hit = await cacheGet(key);
+    if (hit?.blob) {
+      memoryPut(key, hit.blob);
+      return hit.blob;
+    }
   }
 
-  const b64 = await requestCloudAudio(text, voice, rate);
-  if (!b64) throw new Error("No audio returned");
-  const blob = base64ToBlob(b64);
+  const proxy = getProxyUrl();
+  const blob = proxy
+    ? await requestViaProxy(text, voice, rate)
+    : service === CLOUD_SERVICES.GOOGLE
+    ? await requestGoogle(text, voice, rate)
+    : await requestElevenLabs(text, voice, rate);
+
   memoryPut(key, blob);
   cachePut(key, blob);
   return blob;
@@ -294,10 +480,45 @@ export function stopSpeaking() {
   stopEverything();
 }
 
+// Circuit breaker: if the cloud keeps failing (bad key, out of credits, no
+// network) we stop trying for a while and use the device voice straight away.
+// Without this, every tap on "Hear word" would wait for a doomed network round
+// trip before falling back — which feels broken to a child.
+const BREAKER_KEY = "ks2_tts_breaker_until";
+const BREAKER_MS = 10 * 60 * 1000;
+
+function breakerOpen() {
+  const until = Number(localStorage.getItem(BREAKER_KEY) || 0);
+  if (!until) return false;
+  if (Date.now() > until) {
+    localStorage.removeItem(BREAKER_KEY);
+    return false;
+  }
+  return true;
+}
+
+function tripBreaker() {
+  try {
+    localStorage.setItem(BREAKER_KEY, String(Date.now() + BREAKER_MS));
+  } catch { /* private mode */ }
+}
+
+export function resetBreaker() {
+  localStorage.removeItem(BREAKER_KEY);
+}
+
+// Why we stopped using the cloud, for the settings UI to explain.
+export function breakerReason() {
+  if (!breakerOpen()) return "";
+  return localStorage.getItem(`${BREAKER_KEY}:why`) || "";
+}
+
 function shouldUseCloud() {
   const pref = getProviderPref();
   if (pref === PROVIDERS.LOCAL) return false;
+  if (pref === PROVIDERS.CLOUD) return true; // user insists: keep trying
   if (!isCloudConfigured()) return false;
+  if (breakerOpen()) return false;
   return true;
 }
 
@@ -315,10 +536,18 @@ export async function speak(text, { rate } = {}) {
   if (shouldUseCloud()) {
     try {
       const blob = await getCloudClip(clean, getCloudVoice(), finalRate);
+      resetBreaker();
       playBlob(blob);
       return;
     } catch (err) {
-      console.warn("Cloud TTS failed, falling back to device voice:", err?.message);
+      const why = friendlyError(err);
+      console.warn("Cloud TTS failed, falling back to device voice:", why);
+      // An explicit "Cloud" choice shouldn't get permanently disabled out
+      // from under the user, but we still record it so the UI can warn.
+      if (getProviderPref() !== PROVIDERS.CLOUD) {
+        tripBreaker();
+        try { localStorage.setItem(`${BREAKER_KEY}:why`, why); } catch { /* ignore */ }
+      }
     }
   }
 
@@ -339,16 +568,19 @@ export async function speak(text, { rate } = {}) {
 
 export const RATE = { normal: 0.95, slow: 0.6 };
 
+// Only pass an explicit rate when the caller actually asked for one. Otherwise
+// leave it undefined so `speak` can honour the saved Slow preference — passing
+// a hardcoded rate here would silently override that setting on every word.
 export function speakWord(word, opts = {}) {
-  return speak(word, { rate: opts.slow ? RATE.slow : RATE.normal, ...opts });
+  return speak(word, { ...opts, rate: opts.slow ? RATE.slow : opts.rate });
 }
 
 export function speakSlow(text, opts = {}) {
-  return speak(text, { rate: RATE.slow, ...opts });
+  return speak(text, { ...opts, rate: RATE.slow });
 }
 
 export function speakSentence(text, opts = {}) {
-  return speak(text, { rate: 0.9, ...opts });
+  return speak(text, { ...opts, rate: 0.9 });
 }
 
 export { cacheClear, cacheStats };

@@ -1,18 +1,39 @@
-// Voice settings — choose where speech comes from (cloud vs device) and which
-// voice it uses, with a preview button and an honest quality readout.
+// Voice settings — choose where speech comes from (cloud vs device), which
+// cloud service to use, and which voice within it.
 //
-// The cloud option needs a Google Cloud TTS key or a serverless proxy URL;
-// both can be pasted here at runtime so you can try without a rebuild.
+// Keys can be pasted here at runtime, so you can try a service without a
+// rebuild. A proxy URL is preferred because it keeps the key server-side.
 
 import { useEffect, useState } from "react";
 import {
-  PROVIDERS, getProviderPref, setProviderPref,
-  getCloudVoice, setCloudVoice, CLOUD_VOICES,
-  getApiKey, setApiKey, getProxyUrl, setProxyUrl, isCloudConfigured,
-  getSlowPref, setSlowPref,
-  getLocalVoicePref, setLocalVoicePref,
-  rankedLocalVoices, localVoiceQuality, warmVoices,
-  speakWord, cacheStats, cacheClear, activeProvider,
+  PROVIDERS,
+  CLOUD_SERVICES,
+  getProviderPref,
+  setProviderPref,
+  getCloudProvider,
+  setCloudProvider,
+  getCloudVoice,
+  setCloudVoice,
+  cloudVoicesFor,
+  getApiKey,
+  setApiKey,
+  getProxyUrl,
+  setProxyUrl,
+  isCloudConfigured,
+  getSlowPref,
+  setSlowPref,
+  getLocalVoicePref,
+  setLocalVoicePref,
+  rankedLocalVoices,
+  localVoiceQuality,
+  warmVoices,
+  speakWord,
+  cacheStats,
+  cacheClear,
+  activeProvider,
+  testCloudKey,
+  resetBreaker,
+  breakerReason,
 } from "../lib/speech";
 
 export function prefersSlow() {
@@ -22,17 +43,35 @@ export function setPrefersSlow(on) {
   setSlowPref(on);
 }
 
+const SERVICES = [
+  {
+    id: CLOUD_SERVICES.ELEVENLABS,
+    name: "ElevenLabs",
+    blurb: "Most natural. Free tier: 10,000 characters/month — the whole word list costs about 3,800, and each word is only ever generated once.",
+    keyLabel: "ElevenLabs API key",
+    keyHint: "elevenlabs.io → Profile → API Keys. Free plan is enough.",
+  },
+  {
+    id: CLOUD_SERVICES.GOOGLE,
+    name: "Google Cloud TTS",
+    blurb: "Neural2 and Studio voices. Free trial credit covers this app easily.",
+    keyLabel: "Google Cloud TTS API key",
+    keyHint: "Enable the Cloud Text-to-Speech API, then create an API key.",
+  },
+];
+
 export default function VoicePicker() {
   const [provider, setProvider] = useState(() => getProviderPref());
+  const [service, setService] = useState(() => getCloudProvider());
+  const [cloudVoice, setCloudVoiceState] = useState(() => getCloudVoice());
   const [localVoices, setLocalVoices] = useState([]);
   const [localPref, setLocalPref] = useState(() => getLocalVoicePref());
-  const [cloudVoice, setCloudVoiceState] = useState(() => getCloudVoice());
   const [key, setKey] = useState(() => getApiKey());
   const [proxy, setProxy] = useState(() => getProxyUrl());
   const [slow, setSlow] = useState(() => getSlowPref());
-  const [showAdvanced, setShowAdvanced] = useState(false);
   const [stats, setStats] = useState({ count: 0, max: 0 });
   const [status, setStatus] = useState("");
+  const [busy, setBusy] = useState(false);
 
   useEffect(() => {
     warmVoices();
@@ -49,9 +88,18 @@ export default function VoicePicker() {
     }
   }, []);
 
+  // Each service has its own voice list, so refresh it when switching.
+  useEffect(() => {
+    setCloudVoiceState(getCloudVoice(service));
+    setKey(getApiKey());
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [service]);
+
   const quality = localVoiceQuality();
   const cloudReady = isCloudConfigured();
-  const effective = provider === PROVIDERS.LOCAL ? "local" : cloudReady ? "cloud" : "local";
+  const usingCloud = provider !== PROVIDERS.LOCAL && cloudReady;
+  const tripped = breakerReason();
+  const current = SERVICES.find((s) => s.id === service) || SERVICES[0];
 
   const handleProvider = (e) => {
     const v = e.target.value;
@@ -60,17 +108,29 @@ export default function VoicePicker() {
     setStatus("");
   };
 
+  const handleService = (e) => {
+    const v = e.target.value;
+    setService(v);
+    setCloudProvider(v);
+    resetBreaker();
+    setStatus("");
+  };
+
   const handlePreview = async () => {
     setStatus("…");
     await speakWord("elephant", { slow });
-    setStatus("Played the word “elephant”.");
+    setStatus(`Played “elephant” with the ${usingCloud ? current.name : "device"} voice.`);
   };
 
-  const handleSaveCredentials = () => {
+  const handleTest = async () => {
+    setBusy(true);
+    setStatus("Testing key…");
     setApiKey(key);
     setProxyUrl(proxy);
-    setStatus("Saved. Speech will use the cloud from now on.");
-    setShowAdvanced(false);
+    resetBreaker();
+    const res = await testCloudKey();
+    setBusy(false);
+    setStatus(res.ok ? "Key works — natural voice is ready." : `Key problem: ${res.error}`);
   };
 
   return (
@@ -85,25 +145,43 @@ export default function VoicePicker() {
 
       <select className="select" value={provider} onChange={handleProvider}>
         <option value={PROVIDERS.AUTO}>
-          Best available {cloudReady ? "(cloud)" : "(device — no cloud key set)"}
+          Best available{cloudReady ? ` (${current.name})` : " (this device — add a key below)"}
         </option>
         <option value={PROVIDERS.CLOUD}>Cloud voice (most natural)</option>
         <option value={PROVIDERS.LOCAL}>This device’s voices</option>
       </select>
 
-      {effective === "cloud" && (
-        <select
-          className="select"
-          value={cloudVoice}
-          onChange={(e) => { setCloudVoiceState(e.target.value); setCloudVoice(e.target.value); }}
-        >
-          {CLOUD_VOICES.map((v) => (
-            <option key={v.id} value={v.id}>{v.label}</option>
-          ))}
-        </select>
+      {provider !== PROVIDERS.LOCAL && (
+        <>
+          <select className="select" value={service} onChange={handleService}>
+            {SERVICES.map((s) => (
+              <option key={s.id} value={s.id}>{s.name}</option>
+            ))}
+          </select>
+          <p className="ks-small ks-muted" style={{ margin: 0 }}>{current.blurb}</p>
+
+          <select
+            className="select"
+            value={cloudVoice}
+            onChange={(e) => {
+              setCloudVoiceState(e.target.value);
+              setCloudVoice(e.target.value);
+            }}
+          >
+            {cloudVoicesFor(service).map((v) => (
+              <option key={v.id} value={v.id}>{v.label}</option>
+            ))}
+          </select>
+
+          {!cloudReady && (
+            <p className="ks-small" style={{ fontWeight: 700, margin: 0 }}>
+              Add a free {current.name} key below to switch this on — takes a minute.
+            </p>
+          )}
+        </>
       )}
 
-      {effective === "local" && (
+      {provider === PROVIDERS.LOCAL && (
         <>
           <select
             className="select"
@@ -113,9 +191,7 @@ export default function VoicePicker() {
           >
             {localVoices.length ? (
               localVoices.map((v) => (
-                <option key={v.voiceURI} value={v.voiceURI}>
-                  {v.name} ({v.lang})
-                </option>
+                <option key={v.voiceURI} value={v.voiceURI}>{v.name} ({v.lang})</option>
               ))
             ) : (
               <option value="">No voices found on this device</option>
@@ -123,11 +199,17 @@ export default function VoicePicker() {
           </select>
           {quality.level === "poor" && (
             <p className="ks-small" style={{ color: "var(--gold-dark)", fontWeight: 700, margin: 0 }}>
-              ⚠ This device only has robotic voices. Add a cloud key below for a
+              ⚠ This device only has robotic voices. Add a free ElevenLabs key below for a
               natural voice.
             </p>
           )}
         </>
+      )}
+
+      {tripped && provider !== PROVIDERS.LOCAL && (
+        <p className="ks-small" style={{ color: "var(--gold-dark)", fontWeight: 700, margin: 0 }}>
+          ⚠ Using the device voice for now — {tripped}
+        </p>
       )}
 
       <div className="ks-row" style={{ gap: 8, flexWrap: "wrap" }}>
@@ -138,16 +220,33 @@ export default function VoicePicker() {
           <input type="checkbox" checked={slow} onChange={(e) => setSlow(e.target.checked)} />
           <span className="ks-small" style={{ fontWeight: 700 }}>Slow (0.6×)</span>
         </label>
-        {status && <span className="ks-small ks-muted">{status}</span>}
+        <span className="ks-small ks-muted">
+          Now using: {activeProvider() === "cloud" ? `${current.name} cloud` : "this device"}
+        </span>
       </div>
 
-      <details open={showAdvanced} onToggle={(e) => setShowAdvanced(e.target.isOpen)}>
+      {status && <p className="ks-small" style={{ margin: 0, fontWeight: 700 }}>{status}</p>}
+
+      <details>
         <summary className="ks-small" style={{ cursor: "pointer", fontWeight: 700 }}>
-          Cloud voice setup {cloudReady ? "✓" : "(optional)"}
+          {current.keyLabel} {cloudReady ? "✓" : "(free — set one up)"}
         </summary>
         <div className="ks-stack" style={{ gap: 8, marginTop: 10 }}>
           <div className="field" style={{ marginBottom: 0 }}>
-            <label className="label" htmlFor="tts-proxy">Serverless proxy URL (recommended)</label>
+            <label className="label" htmlFor="tts-key">{current.keyLabel}</label>
+            <input
+              id="tts-key"
+              className="input"
+              value={key}
+              onChange={(e) => setKey(e.target.value)}
+              placeholder={service === CLOUD_SERVICES.ELEVENLABS ? "sk_…" : "AIza…"}
+              type="password"
+            />
+            <span className="ks-small ks-muted">{current.keyHint} Stored only in this browser.</span>
+          </div>
+
+          <div className="field" style={{ marginBottom: 0 }}>
+            <label className="label" htmlFor="tts-proxy">Serverless proxy URL (optional, safer)</label>
             <input
               id="tts-proxy"
               className="input"
@@ -155,26 +254,14 @@ export default function VoicePicker() {
               onChange={(e) => setProxy(e.target.value)}
               placeholder="https://your-worker.dev/tts"
             />
-            <span className="ks-small ks-muted">Keeps the key server-side.</span>
-          </div>
-          <div className="field" style={{ marginBottom: 0 }}>
-            <label className="label" htmlFor="tts-key">Google Cloud TTS API key</label>
-            <input
-              id="tts-key"
-              className="input"
-              value={key}
-              onChange={(e) => setKey(e.target.value)}
-              placeholder="AIza…"
-              type="password"
-            />
             <span className="ks-small ks-muted">
-              Stored only in this browser. Prefer a proxy — a key used directly
-              from the browser can be read by anyone.
+              Keeps the key server-side so it can never be read from the page.
             </span>
           </div>
-          <div className="ks-row">
-            <button type="button" className="btn btn-sm btn-forest" onClick={handleSaveCredentials}>
-              Save
+
+          <div className="ks-row" style={{ flexWrap: "wrap" }}>
+            <button type="button" className="btn btn-sm btn-forest" onClick={handleTest} disabled={busy}>
+              {busy ? "Testing…" : "Save & test key"}
             </button>
             <span className="ks-small ks-muted">{stats.count} cached clips</span>
             <button
