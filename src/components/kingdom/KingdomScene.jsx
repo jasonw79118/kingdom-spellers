@@ -1,0 +1,265 @@
+// Kingdom scene — the visual representation of a player's kingdom.
+//
+// Rendered as layered SVG with gentle parallax so the world has depth:
+//   sky → far range → mid hills → ground → buildings → foreground
+//
+// Built buildings appear as illustrations on the ground line; unbuilt ones
+// show as a marked-out empty plot. The player's avatar stands in the scene.
+
+import { useRef, useMemo, useState, useEffect } from "react";
+import { KINGDOMS } from "../../game/kingdom";
+import { BuildingArt, buildingSize } from "./buildingArt";
+import Avatar from "../Avatar";
+
+// Theme palettes for the five territories.
+const THEMES = {
+  forest: {
+    skyTop: "#bfe6c8", skyBottom: "#8fce9e",
+    far: "#6fa37a", mid: "#4f8558", ground: "#6aa96f", groundEdge: "#4f8558",
+    decor: "🌳", water: "#6fa8c9",
+  },
+  river: {
+    skyTop: "#cfe6f5", skyBottom: "#9cc6e0",
+    far: "#7fa8c4", mid: "#5f8fae", ground: "#7fb08a", groundEdge: "#5f8fae",
+    decor: "🌾", water: "#4a8fc0",
+  },
+  highland: {
+    skyTop: "#dfe4ef", skyBottom: "#b9c2d6",
+    far: "#8f9bb3", mid: "#75839b", ground: "#8fa07a", groundEdge: "#6b7a63",
+    decor: "🌲", water: "#7fa8c4",
+  },
+  cavern: {
+    skyTop: "#d7d2f2", skyBottom: "#b0a5e0",
+    far: "#8f7fc0", mid: "#6b5b9e", ground: "#7d6fae", groundEdge: "#5d4f8f",
+    decor: "💎", water: "#9c8ad8",
+  },
+  peak: {
+    skyTop: "#ffd9c0", skyBottom: "#f0a882",
+    far: "#c98f7a", mid: "#a8705f", ground: "#9c7a6a", groundEdge: "#7a5a4a",
+    decor: "🌋", water: "#8a5a4a",
+  },
+};
+
+// Scene coordinate system.
+const W = 1000;
+const GROUND_Y = 300;
+
+function FarRange({ color }) {
+  return (
+    <path
+      d={`M0 300 L120 150 L210 240 L320 120 L440 250 L560 160 L680 260 L800 140 L920 250 L1000 190 L1000 300 Z`}
+      fill={color}
+      opacity="0.45"
+    />
+  );
+}
+
+function MidHills({ color }) {
+  return (
+    <g opacity="0.75">
+      <ellipse cx={140} cy={300} rx={210} ry={80} fill={color} />
+      <ellipse cx={470} cy={310} rx={250} ry={88} fill={color} />
+      <ellipse cx={820} cy={302} rx={230} ry={82} fill={color} />
+    </g>
+  );
+}
+
+// Decorative trees / rocks scattered on the mid layer.
+function Decor({ glyph, color }) {
+  const spots = [
+    [60, 268, 0.9], [200, 276, 0.7], [330, 264, 1.0], [640, 272, 0.8],
+    [760, 266, 0.95], [920, 274, 0.75], [140, 284, 0.6], [520, 282, 0.65],
+  ];
+  return (
+    <g opacity="0.9">
+      {spots.map(([x, y, s], i) => (
+        <g key={i} transform={`translate(${x} ${y}) scale(${s})`}>
+          <text x={0} y={0} fontSize={34} textAnchor="middle" dominantBaseline="middle">{glyph}</text>
+        </g>
+      ))}
+    </g>
+  );
+}
+
+// An empty, marked-out plot awaiting construction.
+function EmptyPlot({ x, y, w, onClick, label }) {
+  const [hover, setHover] = useState(false);
+  return (
+    <g
+      transform={`translate(${x} ${y})`}
+      onClick={onClick}
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+      style={{ cursor: onClick ? "pointer" : "default" }}
+      role={onClick ? "button" : undefined}
+      tabIndex={onClick ? 0 : undefined}
+      aria-label={label}
+      onKeyDown={(e) => {
+        if (onClick && (e.key === "Enter" || e.key === " ")) {
+          e.preventDefault();
+          onClick();
+        }
+      }}
+    >
+      <rect
+        x={4}
+        y={-14}
+        width={w - 8}
+        height={22}
+        rx={8}
+        fill={hover ? "rgba(232,182,76,0.22)" : "rgba(45,42,50,0.10)"}
+        stroke={hover ? "#e8b64c" : "rgba(45,42,50,0.28)"}
+        strokeWidth="2"
+        strokeDasharray="7 6"
+      />
+      <text
+        x={w / 2}
+        y={2}
+        textAnchor="middle"
+        fontSize="13"
+        fontFamily="var(--font-body)"
+        fontWeight="700"
+        fill={hover ? "#a5821a" : "rgba(45,42,50,0.5)"}
+      >
+        {hover ? "Build!" : "Empty plot"}
+      </text>
+    </g>
+  );
+}
+
+// A completed building, with a gentle idle float.
+function PlacedBuilding({ building, x, y, justBuilt }) {
+  const size = buildingSize(building.id);
+  return (
+    <g
+      transform={`translate(${x} ${y - size.h})`}
+      style={{ animation: justBuilt ? "ks-pop 0.55s cubic-bezier(.34,1.56,.64,1)" : "ks-float 5s ease-in-out infinite" }}
+    >
+      <BuildingArt id={building.id} />
+    </g>
+  );
+}
+
+export default function KingdomScene({ kingdomId, built = {}, onSelectPlot, justBuilt }) {
+  const sceneRef = useRef(null);
+  const [tilt, setTilt] = useState({ x: 0, y: 0 });
+  const kingdom = useMemo(() => KINGDOMS.find((k) => k.id === kingdomId) || KINGDOMS[0], [kingdomId]);
+  const theme = THEMES[kingdom.theme] || THEMES.forest;
+
+  // Gentle pointer-driven parallax (desktop) — adds depth without motion
+  // sickness on touch devices.
+  const onMove = (e) => {
+    const rect = sceneRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    const px = (e.clientX - rect.left) / rect.width - 0.5;
+    const py = (e.clientY - rect.top) / rect.height - 0.5;
+    setTilt({ x: px * 12, y: py * 6 });
+  };
+  const onLeave = () => setTilt({ x: 0, y: 0 });
+
+  // Layout: spread buildings evenly along the ground line.
+  const slots = kingdom.buildings.length;
+  const usable = W - 120;
+  const gap = usable / slots;
+  const placements = kingdom.buildings.map((b, i) => {
+    const size = buildingSize(b.id);
+    const centre = 60 + gap * i + gap / 2;
+    return { building: b, x: centre - size.w / 2, y: GROUND_Y + 6 };
+  });
+
+  const builtCount = kingdom.buildings.filter((b) => built[b.id]).length;
+
+  return (
+    <div
+      ref={sceneRef}
+      onMouseMove={onMove}
+      onMouseLeave={onLeave}
+      style={{ borderRadius: "var(--radius-lg)", overflow: "hidden", position: "relative", boxShadow: "var(--shadow)" }}
+    >
+      <svg viewBox={`0 0 ${W} 420`} width="100%" style={{ display: "block" }} role="img"
+        aria-label={`${kingdom.name}, ${builtCount} of ${slots} buildings built`}>
+        <defs>
+          <linearGradient id={`sky-${kingdom.theme}`} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor={theme.skyTop} />
+            <stop offset="100%" stopColor={theme.skyBottom} />
+          </linearGradient>
+          <linearGradient id={`ground-${kingdom.theme}`} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor={theme.ground} />
+            <stop offset="100%" stopColor={theme.groundEdge} />
+          </linearGradient>
+        </defs>
+
+        {/* sky */}
+        <rect x={0} y={0} width={W} height={GROUND_Y} fill={`url(#sky-${kingdom.theme})`} />
+        {/* sun / moon */}
+        <circle cx={860} cy={62} r={30} fill="#fff6d8" opacity="0.85" />
+
+        {/* parallax layers */}
+        <g style={{ transform: `translate(${tilt.x * 0.5}px, ${tilt.y * 0.5}px)`, transition: "transform .25s ease-out" }}>
+          <FarRange color={theme.far} />
+        </g>
+        <g style={{ transform: `translate(${tilt.x * 1.1}px, ${tilt.y * 1.1}px)`, transition: "transform .25s ease-out" }}>
+          <MidHills color={theme.mid} />
+          <Decor glyph={theme.decor} color={theme.mid} />
+        </g>
+
+        {/* river / water strip */}
+        <path
+          d={`M0 ${GROUND_Y + 74} q120 -16 250 0 t250 0 t250 0 t250 0 L${W} 420 L0 420 Z`}
+          fill={theme.water}
+          opacity="0.75"
+        />
+
+        {/* ground */}
+        <rect x={0} y={GROUND_Y} width={W} height={120} fill={`url(#ground-${kingdom.theme})`} />
+        <rect x={0} y={GROUND_Y} width={W} height={6} fill={theme.groundEdge} opacity="0.6" />
+
+        {/* buildings / plots */}
+        {placements.map(({ building, x, y }) =>
+          built[building.id] ? (
+            <PlacedBuilding
+              key={building.id}
+              building={building}
+              x={x}
+              y={y}
+              justBuilt={justBuilt === building.id}
+            />
+          ) : (
+            <EmptyPlot
+              key={building.id}
+              x={x}
+              y={y + 4}
+              w={buildingSize(building.id).w}
+              onClick={onSelectPlot ? () => onSelectPlot(building) : undefined}
+              label={`Empty plot — build ${building.name}`}
+            />
+          )
+        )}
+
+        {/* grass tufts on the foreground */}
+        <g opacity="0.5" style={{ transform: `translate(${tilt.x * 1.8}px, ${tilt.y * 1.8}px)`, transition: "transform .25s ease-out" }}>
+          {Array.from({ length: 26 }, (_, i) => {
+            const x = 12 + i * 39;
+            const h = 10 + ((i * 7) % 9);
+            return <path key={i} d={`M${x} ${GROUND_Y + 116} q3 -${h} 6 0`} stroke={theme.groundEdge} strokeWidth="2.5" fill="none" strokeLinecap="round" />;
+          })}
+        </g>
+      </svg>
+
+      {/* caption */}
+      <div
+        style={{
+          position: "absolute", left: 12, bottom: 10,
+          background: "rgba(255,255,255,0.82)", borderRadius: "var(--radius)",
+          padding: "6px 12px", fontSize: "0.8rem", fontWeight: 700,
+          display: "flex", gap: 8, alignItems: "center",
+        }}
+      >
+        <span>{kingdom.name}</span>
+        <span className="badge badge-forest" style={{ fontSize: "0.7rem" }}>
+          {builtCount}/{slots} built
+        </span>
+      </div>
+    </div>
+  );
+}

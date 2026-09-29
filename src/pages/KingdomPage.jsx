@@ -5,16 +5,111 @@
 // backend.progress so it persists per player and is shared across all
 // spelling lists.
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { backend } from "../lib/backend";
 import Avatar from "../components/Avatar";
 import ProgressBar from "../components/ProgressBar";
 import StatPill from "../components/StatPill";
+import KingdomScene from "../components/kingdom/KingdomScene";
+import { BuildingArt, buildingSize } from "../components/kingdom/buildingArt";
 import {
   KINGDOMS, TERRITORY_CLAIM_COST, RANKS,
-  rankForProsperity, rankProgress, prosperityOf, canClaimTerritory,
+  rankForProsperity, rankProgress, prosperityOf,
 } from "../game/kingdom";
+
+// Celebration sparkles when a building is completed.
+function Sparkles() {
+  const bits = Array.from({ length: 18 }, (_, i) => ({
+    left: 6 + Math.random() * 88,
+    delay: Math.random() * 0.35,
+    dx: (Math.random() - 0.5) * 90,
+    dy: -60 - Math.random() * 90,
+    color: ["#e8b64c", "#7fb05a", "#6fa8c9", "#d97a9a"][i % 4],
+    size: 7 + Math.random() * 7,
+  }));
+  return (
+    <div className="ks-sparkle-layer" style={{ position: "absolute", inset: 0, overflow: "hidden" }}>
+      {bits.map((b, i) => (
+        <span
+          key={i}
+          style={{
+            position: "absolute",
+            left: `${b.left}%`,
+            top: "45%",
+            width: b.size,
+            height: b.size,
+            borderRadius: 2,
+            background: b.color,
+            animation: `ks-sparkle 1.1s ease-out ${b.delay}s forwards`,
+            ["--dx"]: `${b.dx}px`,
+            ["--dy"]: `${b.dy}px`,
+          }}
+        />
+      ))}
+    </div>
+  );
+}
+
+// The shop strip: what you can build next, with the current scene above it.
+function BuildOptions({ kingdom, built, gold, busy, onBuild }) {
+  return (
+    <div className="ks-grid" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(230px, 1fr))" }}>
+      {kingdom.buildings.map((b) => {
+        const done = Boolean(built[b.id]);
+        const affordable = gold >= b.cost;
+        const size = buildingSize(b.id);
+        return (
+          <button
+            key={b.id}
+            type="button"
+            className="card-flat"
+            onClick={() => !done && onBuild(b)}
+            disabled={done || busy}
+            aria-label={done ? `${b.name} built` : `Build ${b.name} for ${b.cost} gold`}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 12,
+              textAlign: "left",
+              cursor: done ? "default" : affordable ? "pointer" : "not-allowed",
+              opacity: done ? 0.75 : affordable ? 1 : 0.62,
+              border: done ? "2px solid var(--forest)" : "2px solid transparent",
+              position: "relative",
+            }}
+          >
+            <div
+              style={{
+                width: 74,
+                height: 62,
+                flexShrink: 0,
+                display: "flex",
+                alignItems: "flex-end",
+                justifyContent: "center",
+                overflow: "hidden",
+              }}
+            >
+              <div style={{ transform: `scale(${Math.min(1, 62 / size.h)})`, transformOrigin: "bottom center" }}>
+                <BuildingArt id={b.id} />
+              </div>
+            </div>
+            <div style={{ minWidth: 0 }}>
+              <div style={{ fontWeight: 700, fontSize: "0.95rem" }}>{b.name}</div>
+              {done ? (
+                <span className="badge badge-forest" style={{ marginTop: 4 }}>Built ✓</span>
+              ) : (
+                <div className="ks-row-wrap" style={{ gap: 6, marginTop: 4 }}>
+                  <span className="badge badge-gold">{b.cost} 🪙</span>
+                  <span className="badge">+{b.prosperity}</span>
+                </div>
+              )}
+            </div>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
 
 export default function KingdomPage() {
   const { playerId } = useParams();
@@ -25,6 +120,9 @@ export default function KingdomPage() {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [toast, setToast] = useState("");
+  const [celebrating, setCelebrating] = useState(null); // building id just placed
+  const [focus, setFocus] = useState(null);
+  const celebrateTimer = useRef(null);
 
   const load = useCallback(async () => {
     if (!playerId) return;
@@ -93,8 +191,24 @@ export default function KingdomPage() {
       await backend.profiles.update(playerId, { coins: gold - building.cost });
       await saveProgress(nextBuilt, progress.unlocked_kingdoms);
       const p = await backend.profiles.list();
-      setPlayer(p.find((x) => x.id === playerId) || player);
-      flash(`${building.name} built! +${building.prosperity} prosperity`);
+      const updated = p.find((x) => x.id === playerId) || player;
+
+      // Rank-up callout if this build crossed a threshold.
+      const before = prosperityOf(Object.keys(built).filter((k) => built[k]));
+      const after = prosperityOf(Object.keys(nextBuilt).filter((k) => nextBuilt[k]));
+      const prevRank = rankForProsperity(before, updated.avatar?.base);
+      const newRank = rankForProsperity(after, updated.avatar?.base);
+
+      setPlayer(updated);
+      setCelebrating(building.id);
+      clearTimeout(celebrateTimer.current);
+      celebrateTimer.current = setTimeout(() => setCelebrating(null), 1600);
+
+      if (newRank.title !== prevRank.title) {
+        flash(`${newRank.icon} ${building.name} built — you are now a ${newRank.title}!`);
+      } else {
+        flash(`${building.name} built! +${building.prosperity} prosperity`);
+      }
     } catch (err) {
       console.error(err);
       flash("Could not save that. Please try again.");
@@ -226,39 +340,27 @@ export default function KingdomPage() {
                 </button>
               </div>
             ) : (
-              <div className="ks-grid" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(190px, 1fr))", marginTop: 14 }}>
-                {kingdom.buildings.map((b) => {
-                  const done = Boolean(built[b.id]);
-                  const affordable = gold >= b.cost;
-                  return (
-                    <button
-                      key={b.id}
-                      type="button"
-                      className="card-flat"
-                      onClick={() => !done && build(b)}
-                      disabled={done || busy}
-                      style={{
-                        textAlign: "left",
-                        cursor: done ? "default" : affordable ? "pointer" : "not-allowed",
-                        opacity: done ? 1 : affordable ? 1 : 0.6,
-                        border: done ? "2px solid var(--forest)" : "2px solid transparent",
-                        position: "relative",
-                      }}
-                    >
-                      <div style={{ fontSize: "1.8rem" }} aria-hidden>{b.icon}</div>
-                      <div style={{ fontWeight: 700, fontSize: "0.95rem" }}>{b.name}</div>
-                      {done ? (
-                        <span className="badge badge-forest" style={{ marginTop: 6 }}>Built ✓</span>
-                      ) : (
-                        <div className="ks-row-wrap" style={{ marginTop: 6, gap: 6 }}>
-                          <span className="badge badge-gold">{b.cost} 🪙</span>
-                          <span className="badge">+{b.prosperity}</span>
-                        </div>
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
+              <>
+                <div style={{ position: "relative", marginTop: 14 }}>
+                  <KingdomScene
+                    kingdomId={kingdom.id}
+                    built={built}
+                    justBuilt={celebrating}
+                    onSelectPlot={(b) => {
+                      setFocus(b.id);
+                      setToast(
+                        gold >= b.cost
+                          ? `${b.name} — ${b.cost} gold. Tap “Build” below to start.`
+                          : `The ${b.name} needs ${b.cost - gold} more gold.`
+                      );
+                    }}
+                  />
+                  {celebrating && <Sparkles />}
+                </div>
+                <div style={{ marginTop: 14 }}>
+                  <BuildOptions kingdom={kingdom} built={built} gold={gold} busy={busy} onBuild={build} />
+                </div>
+              </>
             )}
           </div>
         );

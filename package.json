@@ -14,7 +14,7 @@
     "verify:schema": "node scripts/verify-schema.mjs",
     "verify:game": "node scripts/verify-game.mjs",
     "test": "node scripts/verify-game.mjs"
-  }
+  },
   "dependencies": {
     "@supabase/supabase-js": "^2.57.0",
     "appwrite": "^28.1.0",

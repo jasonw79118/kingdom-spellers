@@ -162,7 +162,10 @@ vars. No component code changes are needed.
 │   │   ├── PlayerCard.jsx    # Child profile card
 │   │   ├── WordCard.jsx      # Word + definition + text-to-speech
 │   │   ├── StatPill.jsx      # Small stat display
-│   │   └── ProgressBar.jsx   # XP / progress bar
+│   │   ├── ProgressBar.jsx   # XP / progress bar
+│   │   └── kingdom/
+│   │       ├── KingdomScene.jsx   # Layered parallax kingdom view
+│   │       └── buildingArt.jsx    # SVG illustrations for all 23 buildings
 │   ├── game/
 │   │   ├── kingdom.js        # Kingdoms, buildings, ranks, gold economy
 │   │   ├── mastery.js        # Mastery scoring + adaptive word selection
@@ -294,6 +297,22 @@ claim territories     →  5 kingdoms, each bigger than the last
 
 Every player's kingdom is stored in `player_progress` and persists across all
 spelling lists — practising a new list never resets your buildings.
+
+### Seeing the kingdom
+
+Each territory has its own illustrated scene: a layered, gently parallaxing
+landscape (sky → distant range → hills → river → ground → foreground grass)
+drawn in SVG. Buildings appear on the ground line as you construct them, and
+unbuilt ones show as a marked-out **empty plot** you can tap.
+
+All 23 buildings across the five territories have hand-drawn SVG artwork built
+from a shared set of primitives (walls, roofs, doors, windows, banners), so the
+whole world reads as one coherent set rather than mismatched clip art. Each
+territory has its own palette and decor — trees in Greenwood, wheat by the
+river, crystals in the Caverns.
+
+Finishing a building plays a pop-in animation with gold, forest and sky
+sparkles, and crossing a rank threshold announces the new title.
 
 ### Adaptive learning
 
