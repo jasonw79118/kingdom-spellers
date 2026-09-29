@@ -2,8 +2,8 @@
 // and part of speech. Includes text-to-speech for word/definition/sentence
 // and inline editing of the definition fields.
 
-import { useState } from "react";
-import { speakWord, speakSlow, speakSentence, stopSpeaking } from "../lib/speech";
+import { useState, useEffect } from "react";
+import { speakWord, speakSlow, speakSentence, stopSpeaking, prefetch } from "../lib/speech";
 
 const MASTERY_TONES = {
   new: "",
@@ -36,6 +36,11 @@ export default function WordCard({ word, mastery, onChange, editable = false }) 
   };
 
   const masteryLevel = mastery?.mastery_level;
+
+  // Warm the audio so the listen buttons are instant.
+  useEffect(() => {
+    if (word?.word) prefetch(word.word);
+  }, [word?.word]);
 
   return (
     <div className="card-flat" style={{ display: "flex", flexDirection: "column", gap: 10 }}>

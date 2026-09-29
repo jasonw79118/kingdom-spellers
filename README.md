@@ -147,6 +147,8 @@ vars. No component code changes are needed.
 │   │   └── AuthContext.jsx   # Auth state + actions
 │   ├── lib/
 │   │   ├── backend.js        # Unified backend interface + lazy loader
+│   │   ├── audioCache.js     # IndexedDB cache for synthesised speech
+│   │   ├── speech.js         # Voice engine: cloud TTS + device voices
 │   │   ├── appwrite.js       # Appwrite client config
 │   │   ├── appwriteBackend.js# Appwrite implementation of the interface
 │   │   ├── supabase.js       # Supabase client (lazy)
@@ -343,12 +345,45 @@ sparkles, and crossing a rank threshold announces the new title.
 
 ### Reading voices
 
-Voices are **scored for naturalness** rather than picked by name order:
-neural/premium/enhanced voices rank highest, Android's low-quality "Compact"
-set is pushed down, and offline (local) voices are preferred so replaying a
-word has no lag. A **voice picker** on the practice screen lists voices
-best-first with a preview button, and a **slower** toggle (0.6× speed) is
-available both from the picker and as a one-tap 🐢 button while spelling.
+The Web Speech API can only use voices **installed on the device** — no amount
+of voice selection makes a robotic OS voice sound natural, because the ceiling
+is the operating system. macOS/iOS and current Windows ship good neural voices;
+Linux, older Windows and some Android builds do not.
+
+So speech has two providers:
+
+| Provider | Quality | Needs |
+|----------|---------|-------|
+| **cloud** | Google Cloud TTS `Neural2` / `Studio` — sounds like a person reading | a key or proxy |
+| **local** | the best voice installed on the device | nothing |
+
+`auto` (the default) uses the cloud when it's configured, otherwise the best
+device voice. **If the cloud is unreachable it silently falls back to the device
+voice**, so a child is never left without audio.
+
+**To enable natural voices**, paste a proxy URL or a Google Cloud TTS key into
+the voice picker on the practice screen — no rebuild needed. For production,
+prefer a serverless proxy so the key stays server-side:
+
+```env
+VITE_TTS_PROVIDER=auto
+VITE_TTS_PROXY=https://your-worker.dev/tts      # recommended
+# or, browser-visible (anyone can extract it):
+# VITE_GOOGLE_TTS_KEY=AIza…
+```
+
+The proxy receives a Google-shaped JSON body and must return
+`{ "audioContent": "<base64 mp3>" }`.
+
+Generated audio is **cached** (in memory, then IndexedDB, capped at 400 clips),
+so each word is synthesised once per device and replays instantly. The current
+and next word are prefetched, so "Hear word" never waits on the network.
+
+Local voices are also ranked properly now: neural/premium/enhanced names score
+highest, Android's low-quality `Compact` set is pushed to the bottom, and
+offline voices are preferred. If the device only has robotic voices the picker
+says so and suggests the cloud. A **slower (0.6×)** toggle is available from
+the picker and as a one-tap 🐢 button while spelling.
 
 ### Adaptive learning
 

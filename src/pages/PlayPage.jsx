@@ -10,7 +10,7 @@ import Avatar from "../components/Avatar";
 import { buildPracticeSet, masteryLevel } from "../game/mastery";
 import { createSession, buildPuzzle, gradeAnswer, advanceSession, sessionSummary, MODES } from "../game/practice";
 import { goldForWord, REWARDS, XP_PER_WORD } from "../game/kingdom";
-import { speakWord, speakSlow, stopSpeaking } from "../lib/speech";
+import { speakWord, speakSlow, stopSpeaking, prefetch } from "../lib/speech";
 import { prefersSlow, setPrefersSlow } from "../components/VoicePicker";
 import VoicePicker from "../components/VoicePicker";
 import { normalizeWord, shuffleArray } from "../lib/utils";
@@ -113,6 +113,15 @@ export default function PlayPage() {
 
   // --- answer interaction --------------------------------------------------
   const currentWord = session?.words[session.index];
+
+  // Warm the audio for the current word (and the next) so tapping
+  // "Hear word" is instant instead of waiting on a network round-trip.
+  useEffect(() => {
+    if (!currentWord?.word) return;
+    prefetch(currentWord.word);
+    const next = session?.words[session.index + 1];
+    if (next?.word) prefetch(next.word);
+  }, [currentWord?.word, session]);
 
   const placeTile = (tileIdx) => {
     if (lockRef.current || !puzzle || !currentWord) return;
