@@ -1,70 +1,177 @@
-# Getting Started with Create React App
+# Kingdom Spellers 2.0
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+A spelling-learning adventure game for children. Players restore a fantasy
+kingdom by spelling words correctly — earning XP, repairing buildings, and
+unlocking new territories.
 
-## Available Scripts
+Built with **React 19 + Vite**, **Supabase** (auth + PostgreSQL), and a
+storybook-fantasy design system. Fully functional in a zero-config **demo
+mode** so you can develop and test without any backend.
 
-In the project directory, you can run:
+---
 
-### `npm start`
+## Quick start
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+```bash
+npm install
+npm run dev
+```
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+Then open the printed URL (default <http://localhost:3000/kingdom-spellers/>).
 
-### `npm test`
+The app runs in **demo mode** out of the box — accounts and progress are
+stored in `localStorage`. Create a parent account, add a child player, and
+you're playing. No configuration required.
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+### Production build
 
-### `npm run build`
+```bash
+npm run build     # outputs to build/
+npm run preview   # serve the production build locally
+```
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+---
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+## Going live with Supabase
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+The app uses a single data layer (`src/lib/backend.js`) that works with two
+backends behind the same async interface:
 
-### `npm run eject`
+| Mode | When | Storage |
+|------|------|---------|
+| **Demo** | `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY` are unset | `localStorage` |
+| **Supabase** | Both env vars are set | Supabase PostgreSQL |
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+### 1. Create a Supabase project
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+Sign up free at <https://supabase.com> and create a new project.
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
+### 2. Run the schema
 
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
+Open **Dashboard → SQL Editor → New query**, paste the entire contents of
+[`supabase/schema.sql`](supabase/schema.sql), and run it. This creates all
+tables, indexes, and **Row Level Security** policies, and seeds the starter
+achievements + inventory.
 
-## Learn More
+### 3. Configure environment
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+Copy `.env.example` to `.env` and fill in your project's URL and anon key
+(found under **Project Settings → API**):
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+```bash
+VITE_SUPABASE_URL=https://your-project.supabase.co
+VITE_SUPABASE_ANON_KEY=your-anon-key
+```
 
-### Code Splitting
+Restart the dev server. The app now uses Supabase Auth + PostgreSQL.
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
+### 4. Enable email auth (optional)
 
-### Analyzing the Bundle Size
+In **Authentication → Providers**, enable **Email**. For Google login,
+enable the **Google** provider and add your OAuth credentials.
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
+---
 
-### Making a Progressive Web App
+## Project structure
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
+```
+├── supabase/
+│   └── schema.sql            # Full database schema + RLS + seed data
+├── public/                   # Static assets (images, sounds, manifest)
+├── src/
+│   ├── main.jsx              # Entry point
+│   ├── App.jsx               # Router (HashRouter — works on GitHub Pages)
+│   ├── index.css             # Design system (tokens, components, responsive)
+│   ├── context/
+│   │   └── AuthContext.jsx   # Auth state + actions
+│   ├── lib/
+│   │   ├── backend.js        # Unified backend interface (demo ↔ Supabase)
+│   │   ├── supabase.js       # Supabase client (null in demo mode)
+│   │   ├── supabaseBackend.js# Supabase implementation of the interface
+│   │   ├── localBackend.js   # localStorage demo implementation
+│   │   ├── seedDictionary.js # Built-in word definitions (from v1 lists)
+│   │   ├── speech.js         # Text-to-speech helpers
+│   │   └── utils.js          # XP/levels, shuffle, weighted sampling, etc.
+│   ├── components/
+│   │   ├── Layout.jsx        # Top bar + mobile bottom nav
+│   │   ├── Avatar.jsx        # Customizable SVG adventurer
+│   │   ├── PlayerCard.jsx    # Child profile card
+│   │   ├── StatPill.jsx      # Small stat display
+│   │   └── ProgressBar.jsx   # XP / progress bar
+│   ├── pages/
+│   │   ├── LoginPage.jsx     # Sign in / create account
+│   │   ├── DashboardPage.jsx # Parent home + player cards
+│   │   ├── PlayersPage.jsx   # Manage child profiles + avatar editor
+│   │   └── ClassicGamePage.jsx# Legacy v1 game (preserved at /classic)
+│   └── legacy/               # Original v1 game (preserved, not yet replaced)
+│       ├── KingdomSpellers.jsx
+│       ├── legacy.css
+│       └── data/             # Original word lists
+└── vite.config.js            # Base path, build, dev server config
+```
 
-### Advanced Configuration
+---
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
+## Architecture notes
 
-### Deployment
+### Data layer
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
+Every component talks to `backend` (`src/lib/backend.js`), never to Supabase
+directly. The interface is identical for both backends:
 
-### `npm run build` fails to minify
+```js
+backend.auth.signIn(email, password)
+backend.profiles.list()            // child profiles
+backend.lists.list(playerId)       // spelling lists + words
+backend.dictionary.lookup([words]) // cached definitions
+backend.mastery.recordAttempt(playerId, word, listId, mode, correct)
+backend.progress.get(playerId)
+backend.catalog.listAchievements()
+```
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+### Adaptive learning
+
+Each `(player, word)` pair tracks attempts, accuracy, current streak, and a
+`mastery_score` (0–100) that maps to a level: **new → learning → practicing
+→ strong → mastered**. A word is only *mastered* after several correct
+attempts, never just one. Incorrect words are weighted to reappear more often
+(see `weightedSample` in `utils.js`).
+
+### Security
+
+- Supabase **Row Level Security** is enabled on every table.
+- Parents can only read/write their **own** profile and their **children's** data.
+- Children's data is never exposed publicly.
+- The shared dictionary is read-only for app users.
+
+### Routing
+
+The app uses `HashRouter` so it works when deployed to GitHub Pages
+(`https://jasonw79118.github.io/kingdom-spellers/`) without any server-side
+SPA fallback configuration.
+
+---
+
+## Development phases
+
+The rebuild is planned in phases — one at a time, testing after each:
+
+- [x] **Phase 1** — Refactor to Vite, Supabase setup, auth, dashboard, player profiles
+- [ ] **Phase 2** — Spelling list database, manual/paste entry, dictionary definitions, text-to-speech
+- [ ] **Phase 3** — Image upload, Tesseract OCR, OCR review screen
+- [ ] **Phase 4** — Mastery system, adaptive practice, progress reports
+- [ ] **Phase 5** — Rebuild core gameplay, castle/kingdom progression, animations
+- [ ] **Phase 6** — Additional game modes, overworld, unlockables, achievements
+- [ ] **Phase 7** — Polish, mobile testing, accessibility, performance, PWA, deploy
+
+---
+
+## Tech stack
+
+- **React 19** + **Vite 7**
+- **React Router 7** (HashRouter)
+- **Supabase** (Auth + PostgreSQL + RLS)
+- **Framer Motion** (animations)
+- **Web Speech API** (text-to-speech)
+- **Tesseract.js** (OCR — Phase 3)
+- Custom SVG design system (no UI framework)

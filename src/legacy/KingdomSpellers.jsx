@@ -3,7 +3,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { firstGradeWords } from "./data/firstgradelist";
 import { secondGradeWords } from "./data/secondgradelist";
 
-const imageBase = process.env.PUBLIC_URL + "/images";
+const imageBase = import.meta.env.BASE_URL + "images";
 
 const characters = {
   esquire: {
