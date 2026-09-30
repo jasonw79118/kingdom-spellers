@@ -227,6 +227,20 @@ export default function PlayPage() {
     });
 
     if (updated.index >= updated.total) {
+      // A finished Royal Test counts toward unlocking the pet race, so the
+      // counter is bumped here rather than on submit — a child may walk away
+      // part-way through and still have sat (and finished) the test.
+      if (updated.mode === "test" && playerId) {
+        try {
+          const prog = await backend.progress.get(playerId);
+          await backend.progress.save(playerId, {
+            ...prog,
+            royal_tests_completed: (prog.royal_tests_completed || 0) + 1,
+          });
+        } catch (err) {
+          console.error(err);
+        }
+      }
       setSession(null);
       setPuzzle(null);
       return;

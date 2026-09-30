@@ -8,6 +8,7 @@ import DashboardPage from "./pages/DashboardPage";
 import PlayersPage from "./pages/PlayersPage";
 import ListsPage from "./pages/ListsPage";
 import ListEditorPage from "./pages/ListEditorPage";
+import RacePage from "./pages/RacePage";
 import ScanListPage from "./pages/ScanListPage";
 import PlayPage from "./pages/PlayPage";
 import KingdomPage from "./pages/KingdomPage";
@@ -62,6 +63,7 @@ export default function App() {
             <Route path="/lists/:listId" element={<ListEditorPage />} />
             <Route path="/play" element={<PlayPage />} />
             <Route path="/kingdom/:playerId" element={<KingdomPage />} />
+            <Route path="/race/:playerId" element={<RacePage />} />
             <Route path="/progress" element={<ProgressPage />} />
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />

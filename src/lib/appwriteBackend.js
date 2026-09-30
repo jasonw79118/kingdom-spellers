@@ -755,6 +755,8 @@ export function createAppwriteBackend() {
           current_kingdom: 1,
           buildings: {},
           characters_unlocked: [],
+          royal_tests_completed: 0,
+          pet_state: {},
         };
         try {
           const doc = await db().getDocument(DB_ID, COLLECTIONS.progress, playerId);
@@ -764,6 +766,8 @@ export function createAppwriteBackend() {
             current_kingdom: doc.currentKingdom ?? 1,
             buildings: parseJson(doc.buildings, {}),
             characters_unlocked: parseJson(doc.charactersUnlocked, []),
+            royal_tests_completed: doc.royalTestsCompleted ?? 0,
+            pet_state: parseJson(doc.petState, {}),
           };
         } catch {
           // Appwrite string attributes: arrays/objects must be JSON-encoded.
@@ -775,6 +779,8 @@ export function createAppwriteBackend() {
               currentKingdom: 1,
               buildings: JSON.stringify({}),
               charactersUnlocked: JSON.stringify([]),
+              royalTestsCompleted: 0,
+              petState: JSON.stringify({}),
             },
             perms
           );
@@ -790,6 +796,8 @@ export function createAppwriteBackend() {
         if (d.current_kingdom !== undefined) payload.currentKingdom = d.current_kingdom;
         if (d.buildings) payload.buildings = JSON.stringify(d.buildings);
         if (d.characters_unlocked) payload.charactersUnlocked = JSON.stringify(d.characters_unlocked);
+        if (d.royal_tests_completed !== undefined) payload.royalTestsCompleted = d.royal_tests_completed;
+        if (d.pet_state) payload.petState = JSON.stringify(d.pet_state);
         try {
           await db().updateDocument(DB_ID, COLLECTIONS.progress, playerId, payload);
         } catch {
@@ -801,6 +809,8 @@ export function createAppwriteBackend() {
               currentKingdom: 1,
               buildings: JSON.stringify({}),
               charactersUnlocked: JSON.stringify([]),
+              royalTestsCompleted: 0,
+              petState: JSON.stringify({}),
               ...payload,
             },
             ownerPerms(me)

@@ -168,6 +168,10 @@ const COLLECTIONS = {
       int("currentKingdom", false, 1),
       json("buildings"),
       json("charactersUnlocked"),
+      // Royal Tests completed — five of them unlock the pet race.
+      int("royalTestsCompleted", false, 0),
+      // Per-pet race state: { cat: { owned, wins, speed }, ... }
+      json("petState"),
     ],
     indexes: [],
   },

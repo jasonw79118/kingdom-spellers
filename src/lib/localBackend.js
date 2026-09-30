@@ -390,6 +390,8 @@ const localProgress = {
         current_kingdom: 1,
         buildings: {},
         characters_unlocked: [],
+        royal_tests_completed: 0,
+        pet_state: {},
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       };

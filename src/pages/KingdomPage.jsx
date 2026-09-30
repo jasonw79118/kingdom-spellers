@@ -14,6 +14,7 @@ import StatPill from "../components/StatPill";
 import KingdomScene from "../components/kingdom/KingdomScene";
 import { BuildingArt, buildingSize, LandArt } from "../components/kingdom/buildingArt";
 import CelebrationSequence from "../components/kingdom/CelebrationSequence";
+import { RACE_UNLOCK_TESTS } from "../game/race";
 import {
   KINGDOMS, TERRITORY_CLAIM_COST, RANKS, PLOT, plotState, isRegionComplete, castleBuilt,
   rankForProsperity, rankProgress, prosperityOf,
@@ -188,6 +189,10 @@ export default function KingdomPage() {
   // These hooks must stay ABOVE the early returns below, or React sees a
   // different number of hooks on the first and second render.
   const cinemaRef = useRef(null);
+
+  // Pet race unlock state, read from progress.
+  const raceDone = Math.min(progress?.royal_tests_completed || 0, RACE_UNLOCK_TESTS);
+  const raceOpen = raceDone >= RACE_UNLOCK_TESTS;
   const wasFullscreen = useRef(false);
   const toggleCinema = useCallback(() => {
     const el = cinemaRef.current;
@@ -418,6 +423,19 @@ export default function KingdomPage() {
       <div className="ks-spread">
         <h1 className="page-title">Your Kingdom</h1>
         <div className="ks-row" style={{ gap: 8 }}>
+          <button
+            type="button"
+            className="btn btn-gold btn-sm"
+            onClick={() => navigate(`/race/${playerId}`)}
+            title="Race your pets — unlocked after 5 Royal Tests"
+          >
+            🏁 Pet Race
+            {!raceOpen && (
+              <span className="ks-small" style={{ marginLeft: 4 }}>
+                {raceDone}/5
+              </span>
+            )}
+          </button>
           <button
             type="button"
             className="btn btn-ghost btn-sm"

@@ -3,6 +3,8 @@
 // cape, shield, crown/helmet, and a companion pet. Items unlock through
 // gameplay; the avatar is pure SVG so it scales crisply on any screen.
 
+import { PET_ART } from "./kingdom/petArt";
+
 const SKIN_TONES = ["#f6d7b8", "#f2c9a0", "#e0ac7e", "#c98d5f", "#a06a42", "#7a4c2e"];
 const HAIR_COLORS = ["#2e2018", "#5a3a22", "#8a5a2e", "#c9962e", "#d97a4a", "#b8b8c0", "#7a4c2e"];
 const TUNIC_COLORS = ["#6b5b9e", "#4a7c59", "#c95a5a", "#6fa8c9", "#c9962e", "#d97a9a"];
@@ -41,7 +43,9 @@ export const AVATAR_OPTIONS = {
   companions: [
     { id: null, label: "None" },
     { id: "cat", label: "Cat" },
+    { id: "dog", label: "Dog" },
     { id: "fox", label: "Fox" },
+    { id: "rabbit", label: "Rabbit" },
     { id: "dragon", label: "Dragon" },
   ],
 };
@@ -108,49 +112,18 @@ function Hair({ style, color, base }) {
   }
 }
 
+// The companion is drawn from the shared pet artwork rather than inlined here,
+// so a pet looks the same in the avatar, on the kingdom and in the race.
+// The pet art lives in a 0 0 100 100 box; this places it at the avatar's
+// bottom-right with its paws on the ground.
 function Companion({ type }) {
-  if (type === "cat") {
-    return (
-      <g transform="translate(88 88)">
-        <ellipse cx="0" cy="10" rx="12" ry="9" fill="#8a8a92" />
-        <circle cx="0" cy="0" r="8" fill="#8a8a92" />
-        <path d="M-6 -4 L-8 -12 L-2 -7 Z" fill="#8a8a92" />
-        <path d="M6 -4 L8 -12 L2 -7 Z" fill="#8a8a92" />
-        <circle cx="-3" cy="-1" r="1.4" fill="#2d2a32" />
-        <circle cx="3" cy="-1" r="1.4" fill="#2d2a32" />
-        <path d="M-2 3 Q0 5 2 3" stroke="#2d2a32" strokeWidth="1" fill="none" />
-      </g>
-    );
-  }
-  if (type === "fox") {
-    return (
-      <g transform="translate(88 90)">
-        <ellipse cx="0" cy="10" rx="11" ry="8" fill="#d97a4a" />
-        <circle cx="0" cy="0" r="7.5" fill="#d97a4a" />
-        <path d="M-5 -3 L-7 -11 L-1 -6 Z" fill="#d97a4a" />
-        <path d="M5 -3 L7 -11 L1 -6 Z" fill="#d97a4a" />
-        <path d="M-3 2 Q0 4 3 2" stroke="#2d2a32" strokeWidth="1" fill="none" />
-        <circle cx="-2.5" cy="-1" r="1.2" fill="#2d2a32" />
-        <circle cx="2.5" cy="-1" r="1.2" fill="#2d2a32" />
-      </g>
-    );
-  }
-  if (type === "dragon") {
-    return (
-      <g transform="translate(88 88)">
-        <ellipse cx="0" cy="10" rx="11" ry="8" fill="#5aa86a" />
-        <circle cx="0" cy="0" r="7.5" fill="#5aa86a" />
-        <path d="M-5 -4 L-9 -10 L-2 -7 Z" fill="#4a7c59" />
-        <path d="M5 -4 L9 -10 L2 -7 Z" fill="#4a7c59" />
-        <path d="M-6 8 Q-12 4 -14 10 Q-8 12 -6 10" fill="#5aa86a" />
-        <circle cx="-2.5" cy="-1" r="1.3" fill="#2d2a32" />
-        <circle cx="2.5" cy="-1" r="1.3" fill="#2d2a32" />
-        <circle cx="-1" cy="3" r="0.8" fill="#2d2a32" />
-        <circle cx="1" cy="3" r="0.8" fill="#2d2a32" />
-      </g>
-    );
-  }
-  return null;
+  const Art = type ? PET_ART[type] : null;
+  if (!Art) return null;
+  return (
+    <g transform="translate(97 104) scale(0.42) translate(-50 -100)">
+      <Art />
+    </g>
+  );
 }
 
 export default function Avatar({ config = DEFAULT_AVATAR, size = 96, className = "" }) {
