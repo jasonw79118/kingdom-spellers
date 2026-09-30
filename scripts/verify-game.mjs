@@ -8,6 +8,7 @@ import {
   KINGDOMS, TERRITORY_CLAIM_COST, REWARDS, PLOT, plotState, isRegionComplete,
   castleOf, castleBuilt,
 } from "../src/game/kingdom.js";
+import { buildPuzzle, trayLeak, shuffleTray } from "../src/game/practice.js";
 
 let pass = 0, fail = 0;
 const check = (name, cond) => {
@@ -51,6 +52,96 @@ const weakHit = set.filter((w) => Number(w.normalized_word.slice(1)) < 5).length
 check("set is the requested size", set.length === 10, );
 check("weak words are prioritised (>=4 of 5 weak)", weakHit >= 4);
 check("no duplicates in set", new Set(set.map((w) => w.word)).size === set.length);
+
+console.log("\nletter tray order (the tray must never spell the word)");
+{
+  const runs = 400;
+  // The letters the child still has to find, i.e. the ones in the tray.
+  const needOf = (puzzle, word) => word.split("").filter((_, i) => puzzle.answer[i] === "");
+  const trayOf = (puzzle) => puzzle.tiles.map((t) => t.char);
+  // Includes alphabetically-ordered and palindromic words, which is where a
+  // plain sort or reverse used to leave the answer sitting in order.
+  const words = [
+    "ant", "cat", "sun", "top", "on", "of", "it", "almost", "noon", "ewe",
+    "level", "abba", "banana", "letter", "queue", "apple", "school", "because",
+    "friend", "spelling",
+  ];
+
+  let hardLeaks = 0;
+  let hardSpelled = 0;
+  for (const w of words) {
+    for (let n = 0; n < runs; n += 1) {
+      const p = buildPuzzle(w, 0);
+      const leak = trayLeak(trayOf(p), needOf(p, w));
+      if (leak === 3) hardSpelled += 1;
+      if (leak !== 0) hardLeaks += 1;
+    }
+  }
+  check("practice/test tiles never read as the word", hardSpelled === 0 && hardLeaks === 0);
+
+  // Hint levels leave fewer letters in the tray, and which ones is itself
+  // random, so a word can come back with several copies of a single letter
+  // ("noon" -> n, n). There is no order to hide in that case — reversed "ee" is
+  // still "ee" — but it must still not read as the word, and must be clean
+  // whenever the remaining letters differ.
+  let hintSpelled = 0;
+  let hintLeaks = 0;
+  let hintCases = 0;
+  for (const w of words) {
+    for (const h of [1, 2]) {
+      if (needOf(buildPuzzle(w, h), w).length < 2) continue;
+      hintCases += 1;
+      for (let n = 0; n < runs; n += 1) {
+        const p = buildPuzzle(w, h);
+        const need = needOf(p, w);
+        const leak = trayLeak(trayOf(p), need);
+        if (leak === 3) hintSpelled += 1;
+        if (leak !== 0 && new Set(need).size > 1) hintLeaks += 1;
+      }
+    }
+  }
+  check("hinted tiles never read as the word either", hintSpelled === 0 && hintCases > 0);
+  check("hinted tiles only stay in order when the letters are identical", hintLeaks === 0);
+
+  // A rigged RNG turns every shuffle into the same order, which is the case a
+  // plain shuffle has no defence against.
+  let riggedLeaks = 0;
+  for (const v of [0, 0.25, 0.5, 0.75, 0.999]) {
+    for (const w of words) {
+      const p = buildPuzzle(w, 0, () => v);
+      if (trayLeak(trayOf(p), needOf(p, w)) !== 0) riggedLeaks += 1;
+    }
+  }
+  check("a rigged RNG still cannot spell the word", riggedLeaks === 0);
+
+  // Scrambling must not lose, duplicate or invent a tile.
+  let intact = true;
+  for (const w of words) {
+    for (const h of [0, 1, 2]) {
+      const p = buildPuzzle(w, h);
+      const wordLetters = new Set(w);
+      const counts = {};
+      trayOf(p).forEach((c) => { counts[c] = (counts[c] || 0) + 1; });
+      // every letter still needed is there, the right number of times
+      needOf(p, w).forEach((c) => { if (!counts[c]) intact = false; counts[c] -= 1; });
+      // and whatever is left over is a letter the word never uses
+      Object.entries(counts).forEach(([c, n]) => { if (n > 0 && wordLetters.has(c)) intact = false; });
+    }
+  }
+  check("scambling keeps every needed letter exactly once", intact);
+
+  // Distractors must be letters the word doesn't use, or the tray's scattered
+  // look (and the repair in shuffleTray) breaks.
+  const hinted = buildPuzzle("cat", 2);
+  const catLetters = new Set("cat");
+  check("distractors never repeat a letter of the word",
+    hinted.tiles.map((t) => t.char).filter((c) => catLetters.has(c)).length === 2);
+  check("easier modes add distractors", hinted.tiles.length > 3);
+  check("hard mode adds no distractors", buildPuzzle("cat", 0).tiles.length === 3);
+
+  check("a one-letter word is a legal tray (no order to hide)",
+    shuffleTray(["a"], ["q", "z"], () => 0).length === 3);
+}
 
 console.log("\nranks");
 check("prosperity 0 = Esquire", rankForProsperity(0).title === "Esquire");

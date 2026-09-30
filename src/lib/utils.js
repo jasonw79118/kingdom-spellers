@@ -1,9 +1,11 @@
 // Small shared helpers used across the app.
 
-export function shuffleArray(arr) {
+// Fisher-Yates. `rng` is injectable so callers that need a reproducible order
+// (and the tests) can pin it.
+export function shuffleArray(arr, rng = Math.random) {
   const copy = [...arr];
   for (let i = copy.length - 1; i > 0; i -= 1) {
-    const j = Math.floor(Math.random() * (i + 1));
+    const j = Math.floor(rng() * (i + 1));
     [copy[i], copy[j]] = [copy[j], copy[i]];
   }
   return copy;
