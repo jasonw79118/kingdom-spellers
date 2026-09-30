@@ -200,6 +200,67 @@ function Cone({ x, y, z, size, h, base }) {
 }
 
 // ---------------------------------------------------------------------------
+// The castle complex
+// ---------------------------------------------------------------------------
+
+/**
+ * A proper castle, not a single tall box: a curtain wall, four corner towers
+ * with conical roofs, a gatehouse and a two-storey keep inside. This is the
+ * landmark the whole village is arranged around, so it is drawn at roughly four
+ * times the footprint of a house.
+ */
+function CastleComplex({ roof, roofDark, wall, banner, gem }) {
+  const W = 4.4;
+  const D = 4.0;
+  return (
+    <g>
+      {/* curtain wall around the whole complex */}
+      <IsoBox x={0} y={0} z={0} w={W} d={D} h={0.95} base={wall} />
+      <Crenellations x={0} y={0} z={0.95} w={W} d={D} base={wall} />
+
+      {/* four corner towers */}
+      {[
+        [0, 0], [W - 0.85, 0], [0, D - 0.85], [W - 0.85, D - 0.85],
+      ].map(([tx, ty], i) => (
+        <g key={i}>
+          <IsoBox x={tx} y={ty} z={0.95} w={0.85} d={0.85} h={1.5} base={wall} />
+          <Crenellations x={tx} y={ty} z={2.45} w={0.85} d={0.85} base={wall} />
+          <Cone x={tx - 0.1} y={ty - 0.1} z={2.45} size={1.05} h={1.1} base={roof} />
+        </g>
+      ))}
+
+      {/* central keep, two storeys */}
+      <IsoBox x={1.3} y={1.2} z={0.95} w={1.8} d={1.6} h={1.1} base={wall} />
+      <IsoBox x={1.5} y={1.4} z={2.05} w={1.4} d={1.2} h={0.8} base={wall} />
+      <Crenellations x={1.3} y={1.2} z={2.85} w={1.8} d={1.6} base={wall} />
+      <Cone x={1.42} y={1.32} z={2.85} size={1.56} h={1.35} base={roof} />
+
+      {/* gatehouse on the front (+y) wall */}
+      <IsoBox x={1.7} y={D - 0.55} z={0} w={1.0} d={0.55} h={1.5} base={wall} />
+      <Crenellations x={1.7} y={D - 0.55} z={1.5} w={1.0} d={0.55} base={wall} />
+      <Cone x={1.6} y={D - 0.65} z={1.5} size={1.2} h={0.85} base={roof} />
+      <polygon
+        points={P([[2.0, D - 0.55, 0], [2.4, D - 0.55, 0], [2.4, D - 0.55, 0.8], [2.0, D - 0.55, 0.8]])}
+        fill="#5a3a20"
+        stroke="#3d2716"
+        strokeWidth={0.9}
+      />
+
+      {/* lit windows around the keep */}
+      <SideWindow x={3.1} y={1.4} z={1.4} d={0.26} h={0.34} lit />
+      <SideWindow x={3.1} y={2.1} z={1.4} d={0.26} h={0.34} lit />
+      <SideWindow x={1.3} y={2.9} z={1.4} d={0.26} h={0.34} lit />
+      <FrontWindow x={1.55} y={2.8} z={1.45} w={0.28} h={0.36} lit />
+      <FrontWindow x={2.55} y={2.8} z={1.45} w={0.28} h={0.36} lit />
+
+      {/* banner on the keep */}
+      <Flag x={2.2} y={2.0} z={3.6} color={banner || roof} h={0.8} />
+      {gem && <CircleGem x={2.2} y={2.0} z={4.5} r={5} />}
+    </g>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Buildings
 // ---------------------------------------------------------------------------
 
@@ -702,6 +763,31 @@ const SPECS = {
         <Flag x={0.95} y={0.55} z={1.64} color={ROOF_RED} h={0.5} />
       </>
     ),
+  },
+
+  // --- Castles -------------------------------------------------------------
+  // Each territory gets its own roof colour, but the same complex: wall, four
+  // towers, keep and gatehouse. The viewBox is much larger because the castle
+  // is about four times a house.
+  greenwoodcastle: {
+    vb: [-90, -330, 400, 380],
+    draw: () => <CastleComplex roof={ROOF_BLUE} roofDark="#2f4d75" wall="#ddd2bc" banner={ROOF_RED} />,
+  },
+  rivercastle: {
+    vb: [-90, -330, 400, 380],
+    draw: () => <CastleComplex roof={ROOF_BLUE} roofDark="#2f4d75" wall="#d6d9de" banner={ROOF_ORANGE} />,
+  },
+  highlandcastle: {
+    vb: [-90, -330, 400, 380],
+    draw: () => <CastleComplex roof={ROOF_GREY} roofDark="#4f5665" wall="#cfc7b6" banner={ROOF_RED} />,
+  },
+  crystalcastle: {
+    vb: [-90, -330, 400, 380],
+    draw: () => <CastleComplex roof="#8f7fc0" roofDark="#5b4f86" wall="#ded6ee" banner="#c9b8ff" gem />,
+  },
+  dragoncastle: {
+    vb: [-90, -330, 400, 380],
+    draw: () => <CastleComplex roof={ROOF_RED} roofDark="#8a3527" wall="#dcc9b0" banner={ROOF_ORANGE} />,
   },
 };
 
