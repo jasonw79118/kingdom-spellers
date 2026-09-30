@@ -35,21 +35,72 @@ function IsoBox({ x, y, z, w, d, h, base, stroke, strokeWidth = 1 }) {
   );
 }
 
-/** A pitched roof drawn over a box. */
-function IsoRoof({ x, y, z, w, d, h, rise, base }) {
+/**
+ * A pitched roof with real thickness.
+ *
+ * The first version drew the two slopes as two flat quads, which read as paper
+ * planks lying on the walls. What makes a roof look solid is: the two slopes
+ * shaded differently so you can tell them apart, a visible fascia band giving
+ * the edge thickness, and a course of tile lines running down the slope.
+ */
+function IsoRoof({ x, y, z, w, d, h, rise, base, tile = true }) {
   const f = gableFaces(x, y, z, w, d, h, rise);
   const t = boxTones(base);
+  const y2 = y + d;
+  const ym = y + d / 2;
+  const zt = z + h;
+  const zr = zt + rise;
+  const thick = 0.07; // fascia depth, so the eave is not a paper edge
+
   return (
     <g>
-      <polygon points={P(f.back)} fill={shade(base, -0.34)} stroke={t.line} strokeWidth={1} />
-      <polygon points={P(f.end)} fill={shade(base, -0.2)} stroke={t.line} strokeWidth={1} />
-      <polygon points={P(f.slope)} fill={t.top} stroke={t.line} strokeWidth={1} />
-      {/* ridge highlight */}
+      {/* far slope — the one turned away from the light */}
+      <polygon points={P(f.back)} fill={shade(base, -0.38)} stroke={t.line} strokeWidth={0.8} />
+      {/* gable end (triangle) on the +x side */}
+      <polygon points={P(f.end)} fill={shade(base, -0.2)} stroke={t.line} strokeWidth={0.8} />
+
+      {/* the near slope, which catches the light */}
+      <polygon points={P(f.slope)} fill={t.top} stroke={t.line} strokeWidth={0.8} />
+
+      {tile && (
+        <g stroke={shade(base, -0.16)} strokeWidth={0.7} opacity={0.5} fill="none">
+          {[0.25, 0.5, 0.75].map((f2) => (
+            <path
+              key={f2}
+              d={L([
+                [x, ym + (d / 2) * f2, zr - rise * f2],
+                [x + w, ym + (d / 2) * f2, zr - rise * f2],
+              ], false)}
+            />
+          ))}
+        </g>
+      )}
+
+      {/* fascia: a thin band under the eave so the roof has thickness */}
+      <polygon
+        points={P([
+          [x, y2, zt],
+          [x + w, y2, zt],
+          [x + w, y2, zt - thick],
+          [x, y2, zt - thick],
+        ])}
+        fill={shade(base, -0.44)}
+      />
+      <polygon
+        points={P([
+          [x + w, y2, zt],
+          [x + w, ym, zr],
+          [x + w, ym, zr - thick],
+          [x + w, y2, zt - thick],
+        ])}
+        fill={shade(base, -0.3)}
+      />
+
+      {/* ridge cap */}
       <path
-        d={L([[x, y + d / 2, z + h + rise], [x + w, y + d / 2, z + h + rise]], false)}
-        stroke={shade(base, 0.3)}
-        strokeWidth={1.4}
-        fill="none"
+        d={L([[x, ym, zr], [x + w, ym, zr]], false)}
+        stroke={shade(base, 0.26)}
+        strokeWidth={2.2}
         strokeLinecap="round"
       />
     </g>

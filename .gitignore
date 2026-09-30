@@ -12,6 +12,9 @@
 # deploy scratch worktree
 /.deploy-worktree
 
+# dev-only visual feedback loop scratch
+/.snap
+
 # env — never commit real credentials
 .env
 .env.local
