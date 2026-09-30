@@ -373,6 +373,9 @@ async function requestGoogle(text, voice, rate) {
 }
 
 export function cloudVoicesFor(service = getCloudProvider()) {
+  // The bundled proxy speaks ElevenLabs, so don't offer Google voice names that
+  // it would silently ignore. A direct key still gets the full choice.
+  if (getProxyUrl()) return ELEVENLABS_VOICES;
   return service === CLOUD_SERVICES.GOOGLE ? GOOGLE_VOICES : ELEVENLABS_VOICES;
 }
 
@@ -392,25 +395,33 @@ export function setCloudVoice(id, service = getCloudProvider()) {
   localStorage.setItem(voiceStorageKey(service), id);
 }
 
-// A proxy short-circuits the direct call, so the key can stay server-side.
-// It receives a Google-shaped body for compatibility with the original setup.
+// The proxy holds the API key server-side, so it never appears in the bundle.
+// It takes a small provider-agnostic request and returns raw MP3 bytes, which
+// is smaller than base64 and can be played directly.
 async function requestViaProxy(text, voice, rate) {
   const res = await fetch(getProxyUrl(), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      input: { text },
-      voice: {
-        languageCode: voice.startsWith("en-GB") ? "en-GB" : voice.startsWith("en-AU") ? "en-AU" : "en-US",
-        name: voice,
-      },
-      audioConfig: { audioEncoding: "MP3", speakingRate: rateToGoogle(rate), pitch: 0 },
+      text,
+      voice,
+      provider: getCloudProvider(),
+      // ElevenLabs accepts 0.7–1.2; clamp rather than have the worker reject it.
+      speed: Math.max(0.7, Math.min(1.2, rate)),
     }),
   });
-  if (!res.ok) throw new Error(`Proxy ${res.status}`);
-  const json = await res.json();
-  if (!json.audioContent && !json.audio) throw new Error("Proxy returned no audio");
-  return base64ToBlob(json.audioContent || json.audio);
+
+  if (!res.ok) {
+    // Surface the worker's message when it sends one, so a quota problem reads
+    // as a quota problem rather than a generic failure.
+    let detail = `Proxy ${res.status}`;
+    try {
+      const j = await res.json();
+      if (j?.error) detail = typeof j.error === "string" ? j.error : detail;
+    } catch { /* not json */ }
+    throw new Error(detail);
+  }
+  return res.blob();
 }
 
 async function getCloudClip(text, voice, rate, { skipCache = false } = {}) {

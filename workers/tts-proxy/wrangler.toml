@@ -1,0 +1,13 @@
+name = "kingdom-spellers-tts"
+main = "src/index.js"
+compatibility_date = "2026-09-30"
+
+# The ElevenLabs key is NOT set here — it is a secret, so it never lands in git:
+#
+#   npx wrangler secret put ELEVENLABS_API_KEY
+#
+# Paste the sk_... value when prompted. That is the whole point of this worker:
+# the key stays server-side instead of being inlined into the public bundle.
+
+[observability]
+enabled = true

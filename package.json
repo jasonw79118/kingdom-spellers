@@ -11,6 +11,7 @@
     "deploy": "node scripts/deploy.mjs",
     "setup:appwrite": "node scripts/setup-appwrite.mjs",
     "setup:platforms": "node scripts/setup-platforms.mjs",
+    "dev:proxy": "node scripts/dev-tts-proxy.mjs",
     "verify:schema": "node scripts/verify-schema.mjs",
     "verify:game": "node scripts/verify-game.mjs",
     "test": "node scripts/verify-game.mjs"

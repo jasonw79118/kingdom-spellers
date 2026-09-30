@@ -275,20 +275,24 @@ export default function VoicePicker() {
               placeholder={service === CLOUD_SERVICES.ELEVENLABS ? "sk_…" : "AIza…"}
               type="password"
             />
-            <span className="ks-small ks-muted">{current.keyHint} Stored only in this browser.</span>
+            <span className="ks-small ks-muted">
+              {current.keyHint} Stored only in this browser — and anyone who opens
+              the page can read it. Prefer the proxy above.
+            </span>
           </div>
 
           <div className="field" style={{ marginBottom: 0 }}>
-            <label className="label" htmlFor="tts-proxy">Serverless proxy URL (optional, safer)</label>
+            <label className="label" htmlFor="tts-proxy">Serverless proxy URL (recommended)</label>
             <input
               id="tts-proxy"
               className="input"
               value={proxy}
               onChange={(e) => setProxy(e.target.value)}
-              placeholder="https://your-worker.dev/tts"
+              placeholder="https://kingdom-spellers-tts.<you>.workers.dev"
             />
             <span className="ks-small ks-muted">
               Keeps the key server-side so it can never be read from the page.
+              Deploy it from <code>workers/tts-proxy</code> in the repo.
             </span>
           </div>
 
