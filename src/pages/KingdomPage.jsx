@@ -11,7 +11,7 @@ import { backend } from "../lib/backend";
 import Avatar from "../components/Avatar";
 import ProgressBar from "../components/ProgressBar";
 import StatPill from "../components/StatPill";
-import KingdomScene from "../components/kingdom/KingdomScene";
+import IsoVillage from "../components/kingdom/IsoVillage";
 import { BuildingArt, buildingSize, LandArt } from "../components/kingdom/buildingArt";
 import CelebrationSequence from "../components/kingdom/CelebrationSequence";
 import { RACE_UNLOCK_TESTS } from "../game/race";
@@ -549,10 +549,11 @@ export default function KingdomPage() {
             ) : (
               <>
                 <div style={{ position: "relative", marginTop: 14 }}>
-                  <KingdomScene
+                  <IsoVillage
                     kingdomId={kingdom.id}
                     built={built}
                     justBuilt={celebrating}
+                    companion={player?.avatar?.companion}
                     onSelectPlot={(b) => {
                       setFocus(b.id);
                       const state = plotState(built, b.id);
