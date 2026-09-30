@@ -1,0 +1,74 @@
+/* Kingdom scene chrome.
+ *
+ * Only the frame, caption and companion live here. The scene itself is all SVG
+ * so it scales cleanly and stays crisp on any display.
+ */
+
+.iso-wrap {
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  position: relative;
+  box-shadow: var(--shadow);
+  background: #bfe6c8;
+}
+
+.iso-svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.iso-caption {
+  position: absolute;
+  left: 12px;
+  bottom: 10px;
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  flex-wrap: wrap;
+  max-width: calc(100% - 24px);
+  background: rgba(255, 255, 255, 0.88);
+  backdrop-filter: blur(4px);
+  border-radius: var(--radius);
+  padding: 6px 12px;
+  font-size: 0.8rem;
+  color: #2d2a32;
+  box-shadow: var(--shadow-sm);
+  pointer-events: none;
+}
+
+.iso-caption strong {
+  font-weight: 800;
+}
+
+.iso-stage {
+  color: #6b5a2e;
+  font-weight: 700;
+}
+
+.iso-count {
+  color: #6f6a76;
+  font-weight: 600;
+}
+
+/* The companion keeps the gentle float it has always had. It is a pet, not a
+ * villager, so it is exempt from the "people are scenery" rule. */
+.iso-companion {
+  animation: ks-float 4s ease-in-out infinite;
+}
+
+/* Build Mode placement hints. These exist only while Build Mode is active —
+ * the rules below the scene never render them, so the grid stays invisible. */
+.iso-plot polygon {
+  transition: opacity 140ms ease;
+}
+
+.iso-plot:hover polygon:nth-of-type(2) {
+  stroke-width: 3.4;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .iso-companion {
+    animation: none;
+  }
+}

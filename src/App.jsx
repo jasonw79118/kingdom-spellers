@@ -13,6 +13,7 @@ import ScanListPage from "./pages/ScanListPage";
 import PlayPage from "./pages/PlayPage";
 import KingdomPage from "./pages/KingdomPage";
 import ProgressPage from "./pages/ProgressPage";
+import ShowroomPage from "./pages/ShowroomPage";
 
 
 function Protected({ children }) {
@@ -66,6 +67,9 @@ export default function App() {
             <Route path="/race/:playerId" element={<RacePage />} />
             <Route path="/progress" element={<ProgressPage />} />
           </Route>
+          {/* The building showroom is an art workbench, not a game screen, so it
+              sits outside the authenticated app shell. */}
+          <Route path="/showroom" element={<ShowroomPage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </HashRouter>

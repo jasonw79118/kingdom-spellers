@@ -19,6 +19,18 @@ import {
   KINGDOMS, TERRITORY_CLAIM_COST, RANKS, PLOT, plotState, isRegionComplete, castleBuilt,
   rankForProsperity, rankProgress, prosperityOf,
 } from "../game/kingdom";
+import { stageFor, stageInfo } from "../components/kingdom/scene/layout";
+
+/**
+ * How developed a territory is, from what's actually standing on it.
+ *
+ * Kept next to the page rather than in the scene so the Build Mode copy and
+ * the rendered scene can never disagree: both call the same two pure functions.
+ */
+function infoFor(kingdom, built) {
+  const n = kingdom.buildings.filter((b) => plotState(built, b.id) === PLOT.BUILT).length;
+  return stageInfo(stageFor(n, kingdom.buildings.length));
+}
 
 // Celebration sparkles when a building is completed.
 function Sparkles() {
@@ -148,6 +160,10 @@ export default function KingdomPage() {
   const [focus, setFocus] = useState(null);
   const [reward, setReward] = useState(null); // { kind, title, subtitle, icon }
   const [cinema, setCinema] = useState(false); // full-screen kingdom view
+  // Build Mode. Outside it the player is simply looking at their kingdom: no
+  // grid, no placement anchors, no build panel. Brief §12 — editing UI is hidden
+  // until the player asks to build.
+  const [buildMode, setBuildMode] = useState(false);
   const celebrateTimer = useRef(null);
 
   const load = useCallback(async () => {
@@ -515,7 +531,12 @@ export default function KingdomPage() {
           <div key={kingdom.id} className="card">
             <div className="ks-spread" style={{ alignItems: "flex-start" }}>
               <div>
-                <h3 className="mt-0" style={{ fontSize: "1.2rem" }}>{kingdom.name}</h3>
+                <div className="ks-row-wrap">
+                  <h3 className="mt-0" style={{ fontSize: "1.2rem" }}>{kingdom.name}</h3>
+                  {unlocked && (
+                    <span className="badge badge-gold">{infoFor(kingdom, built).name}</span>
+                  )}
+                </div>
                 <p className="ks-muted ks-small" style={{ margin: 0 }}>{kingdom.subtitle}</p>
               </div>
               {!unlocked ? (
@@ -552,8 +573,10 @@ export default function KingdomPage() {
                   <IsoVillage
                     kingdomId={kingdom.id}
                     built={built}
-                    justBuilt={celebrating}
                     companion={player?.avatar?.companion}
+                    buildMode={buildMode}
+                    rank={rank.id}
+                    animate={!cinema}
                     onSelectPlot={(b) => {
                       setFocus(b.id);
                       const state = plotState(built, b.id);
@@ -574,15 +597,38 @@ export default function KingdomPage() {
                   />
                   {celebrating && <Sparkles />}
                 </div>
+
+                {/*
+                  Build Mode. The button lives under the scene, so the default
+                  view of a kingdom is a picture of a place, not an editor. Once
+                  you build something the panel closes again and the guides
+                  disappear — the brief's "hide the grid after placement".
+                */}
                 <div style={{ marginTop: 14 }}>
-                  <BuildOptions
-                    kingdom={kingdom}
-                    built={built}
-                    gold={gold}
-                    busy={busy}
-                    onClear={clearLand}
-                    onBuild={build}
-                  />
+                  <button
+                    type="button"
+                    className={buildMode ? "btn btn-ghost" : "btn btn-gold"}
+                    onClick={() => setBuildMode((v) => !v)}
+                    aria-pressed={buildMode}
+                  >
+                    {buildMode ? "✓ Done building — admire your kingdom" : "🔨 Build"}
+                  </button>
+
+                  {buildMode && (
+                    <div style={{ marginTop: 12 }}>
+                      <p className="ks-muted ks-small" style={{ margin: "0 0 10px" }}>
+                        Choose a plot on the map, or a building below. {infoFor(kingdom, built).blurb}
+                      </p>
+                      <BuildOptions
+                        kingdom={kingdom}
+                        built={built}
+                        gold={gold}
+                        busy={busy}
+                        onClear={clearLand}
+                        onBuild={build}
+                      />
+                    </div>
+                  )}
                 </div>
               </>
             )}
