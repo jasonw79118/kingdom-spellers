@@ -321,14 +321,14 @@ export default function PlayPage() {
             </div>
             <div className="ks-row-wrap">
               <button type="button" className="btn btn-lg btn-forest" onClick={() => start("practice")}>
-                ▶ Practise
+                ▶ Practice
               </button>
               <button type="button" className="btn btn-lg btn-gold" onClick={() => start("test")}>
                 👑 Royal Test
               </button>
             </div>
             <p className="ks-small ks-muted" style={{ margin: 0 }}>
-              Practise adapts to you: words you find hard come back more often,
+              Practice adapts to you: words you find hard come back more often,
               and earns you gold. The Royal Test is a real test — no hints, and
               no gold either, so try it when you feel ready.
             </p>

@@ -185,55 +185,77 @@ function ensureSeeded() {
   if (!seededPromise) {
     seededPromise = (async () => {
       const db = getDatabases();
+
+      // One cheap probe per table beats blindly attempting every insert. If the
+      // table already has rows there is nothing to seed, so we skip it entirely
+      // instead of firing hundreds of creates that all come back 409. This turns
+      // a returning visitor's ~715 requests into 3.
+      const isPopulated = async (collection) => {
+        try {
+          const { documents } = await db.listDocuments(DB_ID, collection, [], 1);
+          return documents.length > 0;
+        } catch {
+          return false; // can't tell — fall through and try to seed
+        }
+      };
+
       // Achievements
-      const ach = [
-        { id: "first-word", title: "First Word", description: "Spell your first word correctly", icon: "star" },
-        { id: "ten-words", title: "Word Collector", description: "Spell 10 words correctly", icon: "book" },
-        { id: "streak-3", title: "On a Roll", description: "Practice 3 days in a row", icon: "flame" },
-        { id: "streak-7", title: "Week of Wonder", description: "Practice 7 days in a row", icon: "calendar" },
-        { id: "mastered-10", title: "Master of Ten", description: "Master 10 words", icon: "crown" },
-        { id: "perfect-test", title: "Royal Scholar", description: "Score 100% on a Royal Test", icon: "medal" },
-      ];
-      for (const a of ach) {
-        try {
-          await db.createDocument(DB_ID, COLLECTIONS.achievements, ID.unique(), {
-            key: a.id, title: a.title, description: a.description, icon: a.icon,
-          });
-        } catch { /* already exists */ }
+      if (!(await isPopulated(COLLECTIONS.achievements))) {
+        const ach = [
+          { id: "first-word", title: "First Word", description: "Spell your first word correctly", icon: "star" },
+          { id: "ten-words", title: "Word Collector", description: "Spell 10 words correctly", icon: "book" },
+          { id: "streak-3", title: "On a Roll", description: "Practice 3 days in a row", icon: "flame" },
+          { id: "streak-7", title: "Week of Wonder", description: "Practice 7 days in a row", icon: "calendar" },
+          { id: "mastered-10", title: "Master of Ten", description: "Master 10 words", icon: "crown" },
+          { id: "perfect-test", title: "Royal Scholar", description: "Score 100% on a Royal Test", icon: "medal" },
+        ];
+        for (const a of ach) {
+          try {
+            await db.createDocument(DB_ID, COLLECTIONS.achievements, ID.unique(), {
+              key: a.id, title: a.title, description: a.description, icon: a.icon,
+            });
+          } catch { /* already exists */ }
+        }
       }
-      const inv = [
-        { id: "cape-blue", name: "Blue Cape", slot: "cape", rarity: "common" },
-        { id: "cape-red", name: "Red Cape", slot: "cape", rarity: "common" },
-        { id: "cape-royal", name: "Royal Cape", slot: "cape", rarity: "rare" },
-        { id: "shield-wood", name: "Wooden Shield", slot: "shield", rarity: "common" },
-        { id: "shield-knight", name: "Knight Shield", slot: "shield", rarity: "rare" },
-        { id: "crown-brass", name: "Brass Crown", slot: "crown", rarity: "rare" },
-        { id: "crown-royal", name: "Royal Crown", slot: "crown", rarity: "legendary" },
-        { id: "pet-cat", name: "Castle Cat", slot: "companion", rarity: "common" },
-        { id: "pet-dragon", name: "Baby Dragon", slot: "companion", rarity: "epic" },
-        { id: "pet-fox", name: "Forest Fox", slot: "companion", rarity: "rare" },
-      ];
-      for (const i of inv) {
-        try {
-          await db.createDocument(DB_ID, COLLECTIONS.inventory, ID.unique(), {
-            key: i.id, name: i.name, slot: i.slot, rarity: i.rarity,
-          });
-        } catch { /* already exists */ }
+
+      if (!(await isPopulated(COLLECTIONS.inventory))) {
+        const inv = [
+          { id: "cape-blue", name: "Blue Cape", slot: "cape", rarity: "common" },
+          { id: "cape-red", name: "Red Cape", slot: "cape", rarity: "common" },
+          { id: "cape-royal", name: "Royal Cape", slot: "cape", rarity: "rare" },
+          { id: "shield-wood", name: "Wooden Shield", slot: "shield", rarity: "common" },
+          { id: "shield-knight", name: "Knight Shield", slot: "shield", rarity: "rare" },
+          { id: "crown-brass", name: "Brass Crown", slot: "crown", rarity: "rare" },
+          { id: "crown-royal", name: "Royal Crown", slot: "crown", rarity: "legendary" },
+          { id: "pet-cat", name: "Castle Cat", slot: "companion", rarity: "common" },
+          { id: "pet-dragon", name: "Baby Dragon", slot: "companion", rarity: "epic" },
+          { id: "pet-fox", name: "Forest Fox", slot: "companion", rarity: "rare" },
+        ];
+        for (const i of inv) {
+          try {
+            await db.createDocument(DB_ID, COLLECTIONS.inventory, ID.unique(), {
+              key: i.id, name: i.name, slot: i.slot, rarity: i.rarity,
+            });
+          } catch { /* already exists */ }
+        }
       }
-      // Dictionary (batch, sequential to stay under rate limits)
-      for (const entry of seedDictionary) {
-        try {
-          await db.createDocument(DB_ID, COLLECTIONS.dictionaryWords, ID.unique(), {
-            word: entry.word,
-            normalizedWord: entry.normalized_word,
-            definition: entry.definition,
-            kidDefinition: entry.kid_definition,
-            exampleSentence: entry.example_sentence,
-            partOfSpeech: entry.part_of_speech,
-            pronunciation: entry.pronunciation,
-            source: entry.source,
-          });
-        } catch { /* already exists */ }
+
+      // Dictionary — by far the biggest table, so the probe matters most here.
+      if (!(await isPopulated(COLLECTIONS.dictionaryWords))) {
+        for (const entry of seedDictionary) {
+          try {
+            await db.createDocument(DB_ID, COLLECTIONS.dictionaryWords, ID.unique(), {
+              word: entry.word,
+              normalizedWord: entry.normalized_word,
+              definition: entry.definition,
+              kidDefinition: entry.kid_definition,
+              exampleSentence: entry.example_sentence,
+              partOfSpeech: entry.part_of_speech,
+              pronunciation: entry.pronunciation,
+              source: entry.source,
+            });
+          } catch { /* already exists */ }
+        }
       }
       markSeeded();
     })().catch((err) => {

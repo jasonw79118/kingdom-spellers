@@ -94,6 +94,11 @@ export default function VoicePicker() {
   const tripped = breakerReason();
   const current = SERVICES.find((s) => s.id === service) || SERVICES[0];
 
+  // Show the prompt when the device voice is poor and nothing better is
+  // available — that combination is what produced silent robotic audio.
+  const needsCloudKey =
+    !cloudReady && (quality.level === "poor" || quality.level === "none" || tripped);
+
   const handleProvider = (e) => {
     const v = e.target.value;
     setProvider(v);
@@ -135,6 +140,41 @@ export default function VoicePicker() {
           natural and work on any device.
         </p>
       </div>
+
+      {/* A robotic voice used to fail silently, so say it plainly instead. */}
+      {needsCloudKey && (
+        <div
+          className="ks-stack"
+          style={{
+            gap: 8,
+            padding: 12,
+            borderRadius: "var(--radius)",
+            background: "rgba(214, 158, 46, 0.14)",
+            border: "1px solid rgba(214, 158, 46, 0.4)",
+          }}
+        >
+          <strong style={{ fontSize: "0.95rem" }}>🔊 This device only has robotic voices</strong>
+          <span className="ks-small">
+            {quality.level === "none"
+              ? "No reading voices were found on this device, so words can't be read aloud."
+              : `The best voice here is "${localVoices[0]?.name || "device default"}", which sounds like a computer. `}
+            A free ElevenLabs key fixes this and makes every device sound natural.
+          </span>
+          <a
+            className="btn btn-sm btn-forest"
+            style={{ alignSelf: "flex-start" }}
+            href="https://elevenlabs.io/app/sign-up"
+            target="_blank"
+            rel="noreferrer"
+          >
+            Get a free key →
+          </a>
+          <span className="ks-small ks-muted">
+            Then paste it under “{current.keyLabel}” below and press Save &amp; test.
+            Free plan: 10,000 characters a month, and the whole word list costs about 3,800.
+          </span>
+        </div>
+      )}
 
       <select className="select" value={provider} onChange={handleProvider}>
         <option value={PROVIDERS.AUTO}>

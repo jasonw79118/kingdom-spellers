@@ -3,7 +3,7 @@
 // Every (player, word) pair tracks attempts, correctness, streak and a mastery
 // score. Two jobs live here:
 //   1. scoreMastery()  — turn raw attempt counts into a mastery level
-//   2. buildPracticeSet() — pick the next words to practise
+//   2. buildPracticeSet() — pick the next words to practice
 //
 // The important rule from the spec: a word is NEVER "Mastered" after a
 // single correct answer. Mastery requires repeated success over time, and
@@ -55,7 +55,7 @@ export function masteryLevel(m) {
   return "learning";
 }
 
-// How urgently does this word need to be practised? Higher = sooner.
+// How urgently does this word need to be practiced? Higher = sooner.
 export function practiceWeight(m) {
   if (!m || !m.attempts) return 5; // brand new words are high priority
   const level = masteryLevel(m);

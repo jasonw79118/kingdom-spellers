@@ -6,10 +6,11 @@
 //   3. Review — definitions are looked up automatically and can be edited
 //   4. Save — words + definitions are stored (definitions saved once)
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { backend } from "../lib/backend";
 import { normalizeWord, uid } from "../lib/utils";
+import { fillMissingDefinitions, getWebDictionarySource } from "../lib/wordDefinitions";
 import WordCard from "../components/WordCard";
 
 // Split raw input into clean, deduplicated words.
@@ -35,6 +36,9 @@ export default function ListEditorPage() {
   const [error, setError] = useState("");
   const [players, setPlayers] = useState([]);
   const [playerId, setPlayerId] = useState("");
+  const [gradeLevel, setGradeLevel] = useState(2);
+  const [fillProgress, setFillProgress] = useState(null); // { done, total }
+  const abortRef = useRef(null);
 
   // Which child is this list for? Every list must belong to a player, or it
   // will not show up when that child plays.
@@ -48,6 +52,13 @@ export default function ListEditorPage() {
       })
       .catch(() => setPlayers([]));
   }, [isEditing, playerId]);
+
+  // Definitions are written to suit the child's grade, so track whoever the
+  // list is for — including when a parent switches the selector.
+  useEffect(() => {
+    const p = players.find((x) => x.id === playerId);
+    if (p?.grade_level) setGradeLevel(Number(p.grade_level) || 2);
+  }, [playerId, players]);
 
   // Load existing list when editing.
   useEffect(() => {
@@ -144,6 +155,52 @@ export default function ListEditorPage() {
       setError("Could not look up definitions automatically — you can type them in below.");
     } finally {
       setBusy(false);
+    }
+  };
+
+  // One click fills in every definition that is still blank. Words the parent
+  // has already defined are left alone — a definition they wrote is theirs to
+  // keep, and nothing is ever regenerated underneath them.
+  const handleFillDefinitions = async () => {
+    const blank = words.filter((w) => !String(w.kid_definition || "").trim());
+    if (blank.length === 0) {
+      setError("Every word already has a definition.");
+      return;
+    }
+
+    setError("");
+    setBusy(true);
+    setFillProgress({ done: 0, total: blank.length });
+
+    const controller = new AbortController();
+    abortRef.current = controller;
+
+    try {
+      const { results, filled, missing } = await fillMissingDefinitions(words, {
+        grade: gradeLevel,
+        signal: controller.signal,
+        onProgress: (done, total) => setFillProgress({ done, total }),
+      });
+
+      setWords((prev) =>
+        prev.map((w) => {
+          const def = results.get(w.id);
+          return def ? { ...w, kid_definition: def } : w;
+        })
+      );
+
+      if (missing.length) {
+        setError(
+          `Filled ${filled} of ${blank.length}. No definition found for: ${missing.join(", ")}. Type those in yourself.`
+        );
+      }
+    } catch (err) {
+      console.error(err);
+      setError("Could not reach the dictionary. Check your connection and try again.");
+    } finally {
+      setBusy(false);
+      setFillProgress(null);
+      abortRef.current = null;
     }
   };
 
@@ -319,10 +376,40 @@ export default function ListEditorPage() {
             <h2 className="mt-0 mb-0" style={{ fontSize: "1.15rem" }}>
               Review & edit definitions
             </h2>
-            <p className="ks-muted ks-small" style={{ margin: "4px 0 0" }}>
-              Definitions are filled in automatically. Tap ✏️ on any word to edit
-              its definition, example, or part of speech.
+            <p className="ks-muted ks-small" style={{ margin: "4px 0 10px" }}>
+              Tap ✏️ on any word to change its definition, example, or part of
+              speech. Anything you type is kept as-is.
             </p>
+
+            <div className="ks-row-wrap" style={{ gap: 8 }}>
+              <button
+                type="button"
+                className="btn btn-forest"
+                onClick={handleFillDefinitions}
+                disabled={busy}
+              >
+                {fillProgress
+                  ? `Looking up… ${fillProgress.done}/${fillProgress.total}`
+                  : "📖 Fill in all definitions"}
+              </button>
+              <span className="ks-small ks-muted">
+                Fills only the blank ones, written for grade {gradeLevel}.
+                {fillProgress && (
+                  <span
+                    className="progress"
+                    style={{ display: "inline-block", width: 90, marginLeft: 8, verticalAlign: "middle" }}
+                  >
+                    <span
+                      className="progress-fill"
+                      style={{
+                        display: "block",
+                        width: `${fillProgress.total ? Math.round((fillProgress.done / fillProgress.total) * 100) : 0}%`,
+                      }}
+                    />
+                  </span>
+                )}
+              </span>
+            </div>
           </div>
 
           <div className="ks-grid" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))" }}>
