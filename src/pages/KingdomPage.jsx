@@ -13,6 +13,7 @@ import ProgressBar from "../components/ProgressBar";
 import StatPill from "../components/StatPill";
 import KingdomScene from "../components/kingdom/KingdomScene";
 import { BuildingArt, buildingSize, LandArt } from "../components/kingdom/buildingArt";
+import CelebrationSequence from "../components/kingdom/CelebrationSequence";
 import {
   KINGDOMS, TERRITORY_CLAIM_COST, RANKS, PLOT, plotState, isRegionComplete, castleBuilt,
   rankForProsperity, rankProgress, prosperityOf,
@@ -144,6 +145,8 @@ export default function KingdomPage() {
   const [toast, setToast] = useState("");
   const [celebrating, setCelebrating] = useState(null); // building id just placed
   const [focus, setFocus] = useState(null);
+  const [reward, setReward] = useState(null); // { kind, title, subtitle, icon }
+  const [cinema, setCinema] = useState(false); // full-screen kingdom view
   const celebrateTimer = useRef(null);
 
   const load = useCallback(async () => {
@@ -177,6 +180,66 @@ export default function KingdomPage() {
     for (const id of Object.keys(raw)) out[id] = plotState(raw, id);
     return out;
   })();
+
+  // Full-screen kingdom view. Prefers the real Fullscreen API so the browser
+  // chrome also disappears; falls back to a CSS-only "cinema" mode on devices
+  // or browsers that refuse it (iOS Safari notably).
+  //
+  // These hooks must stay ABOVE the early returns below, or React sees a
+  // different number of hooks on the first and second render.
+  const cinemaRef = useRef(null);
+  const wasFullscreen = useRef(false);
+  const toggleCinema = useCallback(() => {
+    const el = cinemaRef.current;
+    if (!el) return;
+    const doc = document;
+    const isFull = Boolean(doc.fullscreenElement || doc.webkitFullscreenElement);
+
+    // `cinema` is the source of truth, not the fullscreen element: in the CSS
+    // fallback there is no fullscreen element at all, so testing for one would
+    // make "Exit full screen" re-enter instead of exiting.
+    if (cinema) {
+      setCinema(false);
+      if (isFull) {
+        const exit = doc.exitFullscreen?.() ?? doc.webkitExitFullscreen?.();
+        // Not awaited: if the promise never settles the UI must still respond.
+        exit?.catch?.(() => {});
+      }
+      return;
+    }
+
+    // Apply the CSS cinema mode straight away, then ask for real fullscreen on
+    // top. Doing it in this order means the button always does something visible
+    // — awaiting requestFullscreen() can hang forever (observed when the request
+    // is refused), which previously left the button doing nothing at all.
+    setCinema(true);
+    try {
+      const req = el.requestFullscreen?.() ?? el.webkitRequestFullscreen?.();
+      req?.then?.(() => { wasFullscreen.current = true; })?.catch?.(() => {});
+    } catch { /* CSS mode is already active */ }
+  }, [cinema]);
+
+  // Keep the two in step if the user leaves fullscreen with the Escape key.
+  // Only tear down when fullscreen was genuinely entered at some point: a refused
+  // request also fires this event, and treating that as "left fullscreen" would
+  // immediately cancel the CSS fallback we just switched on.
+  useEffect(() => {
+    const onChange = () => {
+      const isFull = Boolean(document.fullscreenElement || document.webkitFullscreenElement);
+      if (isFull) {
+        wasFullscreen.current = true;
+      } else if (wasFullscreen.current) {
+        wasFullscreen.current = false;
+        setCinema(false);
+      }
+    };
+    document.addEventListener("fullscreenchange", onChange);
+    document.addEventListener("webkitfullscreenchange", onChange);
+    return () => {
+      document.removeEventListener("fullscreenchange", onChange);
+      document.removeEventListener("webkitfullscreenchange", onChange);
+    };
+  }, []);
 
   if (loading) return <p className="ks-muted">Loading kingdom…</p>;
   if (!player || !progress) {
@@ -239,12 +302,29 @@ export default function KingdomPage() {
       clearTimeout(celebrateTimer.current);
       celebrateTimer.current = setTimeout(() => setCelebrating(null), 1600);
 
+      // A promotion is the biggest moment in the game, so it gets the fullest
+      // sequence; a finished castle is next; everything else is a short reward.
       if (newRank.title !== prevRank.title) {
-        flash(`${newRank.icon} ${building.name} built — you are now a ${newRank.title}!`);
+        setReward({
+          kind: "rank",
+          title: newRank.title,
+          subtitle: `${building.name} made you a ${newRank.title}`,
+          icon: newRank.icon,
+        });
       } else if (building.castle) {
-        flash(`🏰 ${kingdomById(building)?.name || "Your region"} is COMPLETE!`);
+        setReward({
+          kind: "castle",
+          title: `${kingdomById(building)?.name || "Region"} complete!`,
+          subtitle: "Every plot is built — what a kingdom",
+          icon: "🏰",
+        });
       } else {
-        flash(`${building.name} built! +${building.prosperity} prosperity`);
+        setReward({
+          kind: "build",
+          title: building.name,
+          subtitle: `Built! +${building.prosperity} prosperity`,
+          icon: building.icon || "✨",
+        });
       }
     } catch (err) {
       console.error(err);
@@ -272,7 +352,14 @@ export default function KingdomPage() {
       setCelebrating(building.id);
       clearTimeout(celebrateTimer.current);
       celebrateTimer.current = setTimeout(() => setCelebrating(null), 1200);
-      flash(`The land is cleared — you can build the ${building.name} there now.`);
+      // Clearing is a step, not an achievement, so it gets a quiet card rather
+      // than a full celebration — the real moment comes when something is built.
+      setReward({
+        kind: "build",
+        title: "Land cleared",
+        subtitle: `Now you can build the ${building.name}`,
+        icon: "🌱",
+      });
     } catch (err) {
       console.error(err);
       flash("Could not clear that land. Please try again.");
@@ -298,7 +385,15 @@ export default function KingdomPage() {
       await saveProgress(built, nextUnlocked);
       const p = await backend.profiles.list();
       setPlayer(p.find((x) => x.id === playerId) || player);
-      flash(`${KINGDOMS[index].name} is yours!`);
+      // Claiming a whole new territory is the biggest unlock in the game, so it
+      // gets the longest sequence.
+      setReward({
+        kind: "territory",
+        title: `${KINGDOMS[index].name} is yours!`,
+        subtitle: `A new land to build — ${KINGDOMS[index].buildings.length} places to fill`,
+        // Kingdoms carry a `wild` glyph that represents their landscape.
+        icon: KINGDOMS[index].wild || "🗺️",
+      });
     } catch (err) {
       console.error(err);
       flash("Could not claim that territory.");
@@ -308,12 +403,34 @@ export default function KingdomPage() {
   };
 
   return (
-    <div className="ks-stack">
+    <div className={`ks-stack${cinema ? " ks-cinema" : ""}`} ref={cinemaRef}>
+      {/* Reward moment. Rendered above everything and dismissed by tapping. */}
+      {reward && (
+        <CelebrationSequence
+          kind={reward.kind}
+          title={reward.title}
+          subtitle={reward.subtitle}
+          icon={reward.icon}
+          onDone={() => setReward(null)}
+        />
+      )}
+
       <div className="ks-spread">
         <h1 className="page-title">Your Kingdom</h1>
-        <button type="button" className="btn btn-ghost" onClick={() => navigate("/")}>
-          ← Dashboard
-        </button>
+        <div className="ks-row" style={{ gap: 8 }}>
+          <button
+            type="button"
+            className="btn btn-ghost btn-sm"
+            onClick={toggleCinema}
+            aria-pressed={cinema}
+            title="Show the kingdom on the whole screen"
+          >
+            {cinema ? "⤢ Exit full screen" : "⛶ Full screen"}
+          </button>
+          <button type="button" className="btn btn-ghost" onClick={() => navigate("/")}>
+            ← Dashboard
+          </button>
+        </div>
       </div>
 
       {/* hero header */}

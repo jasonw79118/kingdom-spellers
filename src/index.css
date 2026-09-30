@@ -382,3 +382,212 @@ img {
 @media (prefers-reduced-motion: reduce) {
   .ks-sparkle-layer { display: none; }
 }
+
+/* ---------- celebration sequence ----------
+   The reward moment shown when a child builds, completes a castle, claims a
+   territory, or is promoted. Layered: a bloom, a canvas particle burst, and a
+   title card that pops in. All of it is suppressed under reduced motion. */
+
+.ks-cel {
+  position: fixed;
+  inset: 0;
+  z-index: 999;
+  display: grid;
+  place-items: center;
+  background: radial-gradient(
+    circle at 50% 46%,
+    rgba(45, 33, 68, 0.55) 0%,
+    rgba(24, 18, 38, 0.88) 70%
+  );
+  animation: ks-cel-fade-out forwards;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+@keyframes ks-cel-fade-out {
+  0%   { opacity: 1; }
+  70%  { opacity: 1; }
+  100% { opacity: 0; visibility: hidden; }
+}
+
+/* the bright bloom that pulls the eye to the centre */
+.ks-cel-flash {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    circle at 50% 46%,
+    rgba(255, 246, 216, 0.95) 0%,
+    rgba(255, 215, 106, 0.55) 30%,
+    rgba(255, 215, 106, 0) 62%
+  );
+  opacity: 0;
+  pointer-events: none;
+}
+
+.ks-cel-flash.on {
+  animation: ks-cel-bloom 1 ease-out;
+}
+
+@keyframes ks-cel-bloom {
+  0%   { opacity: 0; transform: scale(0.35); }
+  18%  { opacity: 1; transform: scale(1); }
+  100% { opacity: 0; transform: scale(1.5); }
+}
+
+.ks-cel-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.ks-cel-card {
+  position: relative;
+  z-index: 2;
+  text-align: center;
+  padding: 28px 40px;
+  border-radius: 22px;
+  background: linear-gradient(160deg, rgba(72, 56, 104, 0.94), rgba(40, 30, 66, 0.94));
+  border: 2px solid rgba(255, 215, 106, 0.55);
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.12) inset,
+    0 26px 60px rgba(0, 0, 0, 0.55),
+    0 0 60px rgba(255, 215, 106, 0.25);
+  max-width: min(90vw, 520px);
+}
+
+.ks-cel-icon {
+  font-size: 3.6rem;
+  line-height: 1;
+  margin-bottom: 6px;
+  filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.5));
+}
+
+.ks-cel-title {
+  font-size: 1.9rem;
+  font-weight: 800;
+  color: #ffe9a8;
+  letter-spacing: 0.01em;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.6);
+}
+
+.ks-cel-sub {
+  margin-top: 6px;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: #e7dcff;
+  opacity: 0.92;
+}
+
+/* the card lands with a slight overshoot so it feels like it has weight */
+.ks-cel-pop {
+  animation: ks-cel-card-pop 1 cubic-bezier(0.2, 1.5, 0.4, 1) both;
+}
+
+@keyframes ks-cel-card-pop {
+  0%   { opacity: 0; transform: translateY(34px) scale(0.72); }
+  55%  { opacity: 1; transform: translateY(-8px) scale(1.08); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.ks-cel-in {
+  animation: ks-cel-card-in 1 ease-out both;
+}
+
+@keyframes ks-cel-card-in {
+  0%   { opacity: 0; transform: scale(0.85); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+.ks-cel-out {
+  animation: ks-cel-card-out 1 ease-in both;
+}
+
+@keyframes ks-cel-card-out {
+  0%   { opacity: 1; transform: translateY(0) scale(1); }
+  100% { opacity: 0; transform: translateY(-38px) scale(0.94); }
+}
+
+.ks-cel-skip {
+  position: absolute;
+  right: 18px;
+  bottom: 18px;
+  z-index: 3;
+  padding: 8px 18px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  background: rgba(0, 0, 0, 0.35);
+  color: #fff;
+  font-weight: 700;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.ks-cel-skip:hover { background: rgba(0, 0, 0, 0.5); }
+
+@media (prefers-reduced-motion: reduce) {
+  .ks-cel-flash { display: none; }
+  .ks-cel-canvas { display: none; }
+  .ks-cel-card { animation: none !important; opacity: 1; transform: none; }
+}
+
+/* ---------- kingdom cinema mode ----------
+   "Full screen" gives the kingdom the whole viewport and drops the app chrome,
+   so a child can look at what they've built without any distraction. It also
+   applies as a fallback when the browser refuses the real Fullscreen API. */
+
+.ks-cinema {
+  min-height: 100vh;
+  min-height: 100dvh;
+  background: radial-gradient(ellipse at 50% 0%, #241c3a 0%, #17122a 70%);
+  padding: clamp(8px, 1.5vw, 18px);
+}
+
+.ks-cinema .page-title {
+  font-size: clamp(1.1rem, 2.4vw, 1.7rem);
+}
+
+/* Give the scene as much room as the screen allows. */
+.ks-cinema .ks-kingdom-scene,
+.ks-cinema .card svg {
+  width: 100%;
+}
+
+.ks-cinema .card {
+  padding: clamp(8px, 1.2vw, 16px);
+}
+
+/* While in cinema mode the app's own bottom navigation is pointless — hide it
+   by letting the scene sit under it. Layout.jsx owns the nav, so this just
+   makes sure the page itself doesn't add extra padding. */
+.ks-cinema {
+  padding-bottom: 8px;
+}
+
+/* ---------- kingdom scene atmosphere ---------- */
+@keyframes ks-drift {
+  0%   { transform: translateX(0); }
+  100% { transform: translateX(26px); }
+}
+
+@keyframes ks-bob {
+  0%   { transform: translateY(0); }
+  100% { transform: translateY(-4px); }
+}
+
+/* A warm glow over the ground so the built kingdom feels lit rather than flat. */
+.ks-scene-glow {
+  position: absolute;
+  inset: auto 0 0 0;
+  height: 42%;
+  pointer-events: none;
+  background: radial-gradient(ellipse at 50% 100%, rgba(255, 231, 168, 0.22) 0%, rgba(255, 231, 168, 0) 68%);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [style*="ks-drift"],
+  [style*="ks-bob"] {
+    animation: none !important;
+  }
+}

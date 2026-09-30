@@ -43,6 +43,71 @@ const THEMES = {
 const W = 1000;
 const GROUND_Y = 300;
 
+// Sun/moon halo, soft rays, and a warm glow. These are what make the scene read
+// as a place rather than a diagram, so they sit behind everything else.
+function SkyGlow({ color }) {
+  return (
+    <g style={{ pointerEvents: "none" }}>
+      {/* halo */}
+      <circle cx={860} cy={62} r={62} fill={color} opacity="0.16" />
+      <circle cx={860} cy={62} r={96} fill={color} opacity="0.08" />
+      {/* rays, each rotated around the sun */}
+      {Array.from({ length: 12 }, (_, i) => (
+        <path
+          key={i}
+          d="M860 62 L872 -140 L890 -140 Z"
+          fill={color}
+          opacity="0.05"
+          transform={`rotate(${i * 30} 860 62)`}
+        />
+      ))}
+    </g>
+  );
+}
+
+// Slowly drifting clouds. Each is wrapped in a group that animates, so the
+// motion is a single CSS transform rather than per-frame JS.
+function Clouds({ color, seed = 0 }) {
+  const banks = [
+    { x: 120, y: 60, s: 1.0, d: 62 },
+    { x: 470, y: 96, s: 0.78, d: 84 },
+    { x: 760, y: 44, s: 1.15, d: 105 },
+  ];
+  return (
+    <g opacity="0.5" style={{ pointerEvents: "none" }}>
+      {banks.map((c, i) => (
+        <g
+          key={i}
+          style={{
+            animation: `ks-drift ${c.d}s linear ${-seed + i * 7}s infinite alternate`,
+          }}
+        >
+          <g transform={`translate(${c.x} ${c.y}) scale(${c.s})`} fill={color}>
+            <ellipse cx="0" cy="0" rx="38" ry="17" />
+            <ellipse cx="26" cy="5" rx="27" ry="13" />
+            <ellipse cx="-25" cy="6" rx="24" ry="11" />
+          </g>
+        </g>
+      ))}
+    </g>
+  );
+}
+
+// Birds wheeling in the distance — a small detail that gives the sky life.
+function Birds({ color }) {
+  return (
+    <g stroke={color} strokeWidth="2" fill="none" strokeLinecap="round" opacity="0.4" style={{ pointerEvents: "none" }}>
+      {[[300, 78, 1], [336, 92, 0.8], [268, 96, 0.65]].map(([x, y, s], i) => (
+        <path
+          key={i}
+          d={`M${x - 8 * s} ${y} q${4 * s} -${4 * s} ${8 * s} 0 q${4 * s} -${4 * s} ${8 * s} 0`}
+          style={{ animation: `ks-bob ${3.4 + i * 0.6}s ease-in-out ${i * 0.4}s infinite alternate` }}
+        />
+      ))}
+    </g>
+  );
+}
+
 function FarRange({ color }) {
   return (
     <path
@@ -250,8 +315,11 @@ export default function KingdomScene({ kingdomId, built = {}, onSelectPlot, just
 
         {/* sky */}
         <rect x={0} y={0} width={W} height={GROUND_Y} fill={`url(#sky-${kingdom.theme})`} />
+        <SkyGlow color="#fff6d8" />
         {/* sun / moon */}
-        <circle cx={860} cy={62} r={30} fill="#fff6d8" opacity="0.85" />
+        <circle cx={860} cy={62} r={30} fill="#fff6d8" opacity="0.9" />
+        <Clouds color="#ffffff" seed={builtCount} />
+        <Birds color="#3c4a5a" />
 
         {/* parallax layers */}
         <g style={{ transform: `translate(${tilt.x * 0.5}px, ${tilt.y * 0.5}px)`, transition: "transform .25s ease-out" }}>
@@ -322,6 +390,9 @@ export default function KingdomScene({ kingdomId, built = {}, onSelectPlot, just
           })}
         </g>
       </svg>
+
+      {/* warm ground light */}
+      <div className="ks-scene-glow" />
 
       {/* caption */}
       <div
