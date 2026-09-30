@@ -108,6 +108,80 @@ function Birds({ color }) {
   );
 }
 
+// A worn road running through the settlement. Real villages grow around a path
+// rather than as a line of separate objects, and it fills the gaps between
+// plots so the ground doesn't read as empty.
+function VillageRoad({ edge }) {
+  return (
+    <g pointerEvents="none">
+      <path
+        d={`M0 ${GROUND_Y + 78} Q250 ${GROUND_Y + 66} 500 ${GROUND_Y + 80} T1000 ${GROUND_Y + 74} L1000 ${GROUND_Y + 96} Q500 ${GROUND_Y + 104} 0 ${GROUND_Y + 94} Z`}
+        fill="#c8b391"
+        opacity="0.55"
+      />
+      {/* ruts, so it reads as travelled rather than painted on */}
+      <path
+        d={`M0 ${GROUND_Y + 84} Q250 ${GROUND_Y + 74} 500 ${GROUND_Y + 86} T1000 ${GROUND_Y + 80}`}
+        fill="none"
+        stroke={edge}
+        strokeWidth="1.5"
+        opacity="0.22"
+        strokeDasharray="14 12"
+      />
+    </g>
+  );
+}
+
+// Filler scenery between the plots — hedgerows, boulders and lanterns. Without
+// these the buildings look like they were dropped onto bare ground.
+function VillageFiller({ glyph, edge, count = 9 }) {
+  const spots = Array.from({ length: count }, (_, i) => ({
+    x: 24 + i * ((W - 48) / (count - 1)) + ((i * 37) % 23) - 11,
+    s: 0.5 + ((i * 13) % 7) / 10,
+    y: GROUND_Y + 12 + ((i * 17) % 9),
+  }));
+  return (
+    <g pointerEvents="none" opacity="0.85">
+      {spots.map((p, i) => (
+        <g key={i} transform={`translate(${p.x} ${p.y}) scale(${p.s})`}>
+          <ellipse cx={0} cy={2} rx={11} ry={3.4} fill="#000" opacity="0.14" />
+          <text
+            x={0}
+            y={0}
+            fontSize={26}
+            textAnchor="middle"
+            dominantBaseline="middle"
+            style={{ color: edge, filter: "saturate(0.9)" }}
+          >
+            {glyph}
+          </text>
+        </g>
+      ))}
+    </g>
+  );
+}
+
+// A raised mound under the castle, so the seat of the realm sits above the
+// village instead of in a line with the cottages.
+function CastleMound({ x, w, top, base, edge }) {
+  return (
+    <g pointerEvents="none">
+      <path
+        d={`M${x - w * 0.62} ${base} Q${x - w * 0.2} ${top} ${x} ${top} Q${x + w * 0.24} ${top} ${x + w * 0.62} ${base} Z`}
+        fill={top === base ? "transparent" : "currentColor"}
+        opacity="0.28"
+      />
+      <path
+        d={`M${x - w * 0.62} ${base} Q${x - w * 0.2} ${top} ${x} ${top} Q${x + w * 0.24} ${top} ${x + w * 0.62} ${base}`}
+        fill="none"
+        stroke={edge}
+        strokeWidth="2"
+        opacity="0.35"
+      />
+    </g>
+  );
+}
+
 function FarRange({ color }) {
   return (
     <path
@@ -250,14 +324,34 @@ function ClearedPlot({ x, y, w, onClick, label }) {
 }
 
 // A completed building, with a gentle idle float.
-function PlacedBuilding({ building, x, y, justBuilt }) {
+// A building is drawn with its footing (baseY) on the ground line, plus a
+// contact shadow so it reads as standing on the land rather than hovering.
+//
+// It deliberately does NOT loop a gentle bob: a continuous vertical float made
+// every structure look like it was hovering, which is exactly what it should
+// never do. Movement is reserved for the moment something is built.
+function PlacedBuilding({ building, x, y, justBuilt, theme }) {
   const size = buildingSize(building.id);
   return (
     <g
-      transform={`translate(${x} ${y - size.h})`}
-      style={{ animation: justBuilt ? "ks-pop 0.55s cubic-bezier(.34,1.56,.64,1)" : "ks-float 5s ease-in-out infinite" }}
+      style={
+        justBuilt
+          ? { animation: "ks-pop 0.55s cubic-bezier(.34,1.56,.64,1)" }
+          : undefined
+      }
     >
-      <BuildingArt id={building.id} />
+      {/* contact shadow, drawn first so the building sits on top of it */}
+      <ellipse
+        cx={x + size.w / 2}
+        cy={y + 2}
+        rx={size.w * 0.46}
+        ry={Math.max(4, size.w * 0.09)}
+        fill="#000"
+        opacity="0.2"
+      />
+      <g transform={`translate(${x} ${y - size.baseY})`}>
+        <BuildingArt id={building.id} />
+      </g>
     </g>
   );
 }
@@ -279,14 +373,17 @@ export default function KingdomScene({ kingdomId, built = {}, onSelectPlot, just
   };
   const onLeave = () => setTilt({ x: 0, y: 0 });
 
-  // Layout: spread buildings evenly along the ground line.
+  // Layout: spread buildings evenly along the ground line. The castle is set
+  // back and lifted onto its mound, because a castle standing in the same line
+  // as the cottages reads as another shed rather than the seat of the realm.
   const slots = kingdom.buildings.length;
   const usable = W - 120;
   const gap = usable / slots;
   const placements = kingdom.buildings.map((b, i) => {
     const size = buildingSize(b.id);
     const centre = 60 + gap * i + gap / 2;
-    return { building: b, x: centre - size.w / 2, y: GROUND_Y + 6 };
+    const lift = b.castle ? -26 : 0;
+    return { building: b, x: centre - size.w / 2, y: GROUND_Y + 6 + lift };
   });
 
   const builtCount = kingdom.buildings.filter((b) => plotState(built, b.id) === PLOT.BUILT).length;
@@ -341,6 +438,33 @@ export default function KingdomScene({ kingdomId, built = {}, onSelectPlot, just
         <rect x={0} y={GROUND_Y} width={W} height={120} fill={`url(#ground-${kingdom.theme})`} />
         <rect x={0} y={GROUND_Y} width={W} height={6} fill={theme.groundEdge} opacity="0.6" />
 
+        {/* back hedge line, then the road the village grew along — both sit
+            behind the buildings so the settlement reads as one place */}
+        <VillageFiller glyph={theme.decor} edge={theme.groundEdge} count={7} />
+        <VillageRoad edge={theme.groundEdge} />
+
+        {/* The castle sits on a rise behind the village, so it belongs to the
+            land instead of floating in it. Drawn before the buildings so the
+            cottages overlap its base. */}
+        {(() => {
+          const castle = kingdom.buildings.find((b) => b.castle);
+          if (!castle) return null;
+          const p = placements.find((pl) => pl.building.id === castle.id);
+          if (!p) return null;
+          const size = buildingSize(castle.id);
+          return (
+            <g style={{ color: theme.ground }}>
+              <CastleMound
+                x={p.x + size.w / 2}
+                w={size.w}
+                top={GROUND_Y + 44}
+                base={GROUND_Y + 96}
+                edge={theme.groundEdge}
+              />
+            </g>
+          );
+        })()}
+
         {/* buildings / wild land / cleared plots */}
         {placements.map(({ building, x, y }) => {
           const state = plotState(built, building.id);
@@ -351,6 +475,7 @@ export default function KingdomScene({ kingdomId, built = {}, onSelectPlot, just
                 building={building}
                 x={x}
                 y={y}
+                theme={theme}
                 justBuilt={justBuilt === building.id}
               />
             );

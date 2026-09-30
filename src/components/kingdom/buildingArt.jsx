@@ -479,41 +479,50 @@ const ClearedLand = () => (
 );
 
 // --- registry -----------------------------------------------------------------
-// Sizes are the footprint each building occupies in scene units.
+// `w`/`h` are the footprint in scene units and the viewBox size.
+//
+// `baseY` is the y within the viewBox where the building's footing actually
+// sits. Placement anchors on baseY, not h, so every structure stands ON the
+// land. It matters because most drawings finish a few units short of the bottom
+// of their box (the castles stop at 88 in a 92-tally box, the well at 74 in 80).
+// Anchoring on h left all of them hovering above the ground line.
+//
+// Every non-default value below was measured from the rendered artwork, not
+// guessed. Anything omitted was measured as reaching the bottom exactly.
 export const BUILDING_ART = {
   // Greenwood Village
   cottage: { w: 80, h: 80, Art: Cottage },
-  well: { w: 66, h: 80, Art: Well },
+  well: { w: 66, h: 80, baseY: 74, Art: Well },
   bakery: { w: 88, h: 80, Art: Bakery },
   market: { w: 88, h: 80, Art: Market },
   schoolhouse: { w: 88, h: 80, Art: Schoolhouse },
   townhall: { w: 112, h: 86, Art: Townhall },
-  greenwoodcastle: { w: 120, h: 92, Art: GreenwoodCastle },
+  greenwoodcastle: { w: 120, h: 92, baseY: 88, Art: GreenwoodCastle },
   // Riverstone Crossing
-  dock: { w: 96, h: 84, Art: Dock },
+  dock: { w: 96, h: 84, baseY: 80, Art: Dock },
   mill: { w: 86, h: 80, Art: Mill },
-  bridge: { w: 96, h: 84, Art: Bridge },
+  bridge: { w: 96, h: 84, baseY: 78, Art: Bridge },
   fishery: { w: 84, h: 80, Art: Fishery },
-  inn: { w: 100, h: 84, Art: Inn },
-  rivercastle: { w: 120, h: 92, Art: RiverstoneCastle },
+  inn: { w: 100, h: 84, baseY: 80, Art: Inn },
+  rivercastle: { w: 120, h: 92, baseY: 88, Art: RiverstoneCastle },
   // Highland Keep
-  watchtower: { w: 60, h: 84, Art: Watchtower },
-  barracks: { w: 94, h: 82, Art: Barracks },
-  chapel: { w: 84, h: 86, Art: Chapel },
-  greatkeep: { w: 116, h: 88, Art: GreatKeep },
-  highlandcastle: { w: 120, h: 92, Art: HighlandCastle },
+  watchtower: { w: 60, h: 84, baseY: 82, Art: Watchtower },
+  barracks: { w: 94, h: 82, baseY: 80, Art: Barracks },
+  chapel: { w: 84, h: 86, baseY: 80, Art: Chapel },
+  greatkeep: { w: 116, h: 88, baseY: 84, Art: GreatKeep },
+  highlandcastle: { w: 120, h: 92, baseY: 88, Art: HighlandCastle },
   // Crystal Caverns
-  mine: { w: 70, h: 82, Art: Mine },
+  mine: { w: 70, h: 82, baseY: 80, Art: Mine },
   gemcutter: { w: 94, h: 80, Art: GemCuttersHall },
-  bridgeoflight: { w: 100, h: 78, Art: BridgeOfLight },
-  cathedral: { w: 92, h: 88, Art: CrystalCathedral },
-  crystalcastle: { w: 120, h: 92, Art: CrystalCastle },
+  bridgeoflight: { w: 100, h: 78, baseY: 74, Art: BridgeOfLight },
+  cathedral: { w: 92, h: 88, baseY: 80, Art: CrystalCathedral },
+  crystalcastle: { w: 120, h: 92, baseY: 88, Art: CrystalCastle },
   // Dragon Peak
-  camp: { w: 86, h: 82, Art: Camp },
-  lair: { w: 74, h: 82, Art: DragonLair },
+  camp: { w: 86, h: 82, baseY: 84, Art: Camp },
+  lair: { w: 74, h: 82, baseY: 80, Art: DragonLair },
   observatory: { w: 84, h: 80, Art: Observatory },
-  throne: { w: 64, h: 88, Art: DragonThrone },
-  dragoncastle: { w: 120, h: 92, Art: DragonCastle },
+  throne: { w: 64, h: 88, baseY: 80, Art: DragonThrone },
+  dragoncastle: { w: 120, h: 92, baseY: 88, Art: DragonCastle },
 };
 
 export function BuildingArt({ id }) {
@@ -536,7 +545,8 @@ export function BuildingArt({ id }) {
 
 export function buildingSize(id) {
   const e = BUILDING_ART[id];
-  return e ? { w: e.w, h: e.h } : { w: 80, h: 80 };
+  if (!e) return { w: 80, h: 80, baseY: 80 };
+  return { w: e.w, h: e.h, baseY: e.baseY ?? e.h };
 }
 
 // Wild / cleared land art, sized to match the plot it sits on.
