@@ -62,7 +62,7 @@ export const REWARDS = {
   // Multipliers applied to the base award.
   streakBonusPerDay: 0.05,   // +5% per consecutive practice day (cap below)
   streakBonusCap: 0.5,       // max +50%
-  reviewBonus: 0.25,         // re-practising a word you've missed
+  reviewBonus: 0.25,         // re-practicing a word you've missed
   // Tests pay nothing.
   testGold: 0,
   testXp: 0,

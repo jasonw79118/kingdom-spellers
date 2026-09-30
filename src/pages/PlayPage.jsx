@@ -249,7 +249,7 @@ export default function PlayPage() {
   if (!statePlayerId) {
     return (
       <div className="card text-center">
-        <p className="ks-muted">Choose a player from the dashboard to start practising.</p>
+        <p className="ks-muted">Choose a player from the dashboard to start practicing.</p>
         <button type="button" className="btn" onClick={() => navigate("/")}>
           Back to dashboard
         </button>

@@ -131,6 +131,9 @@ export async function testCloudKey() {
 
 function friendlyError(err) {
   const msg = String(err?.message || err || "");
+  if (/paid_plan_required|free users cannot/i.test(msg)) {
+    return "That voice needs a paid ElevenLabs plan. Pick another voice — the list only shows free ones.";
+  }
   if (/401|unauthorized|invalid.*key|api key/i.test(msg)) {
     return "That key was rejected. Check you copied the whole thing.";
   }
@@ -253,23 +256,23 @@ export function warmVoices() {
 // Both fall back to the device voice if the key is missing, invalid, or out of
 // credits, so a child is never left without audio.
 
-// ElevenLabs "premade" voices. These are the stock public voices and need no
-// account-specific setup. Descriptions come from the ElevenLabs voice library.
+// ElevenLabs voices that are confirmed to work on the FREE plan.
+//
+// This list is not a guess: every ID below was tested against a real free-tier
+// key and returned HTTP 200 with audio. ElevenLabs splits its library voices —
+// some return 402 "Free users cannot use library voices via the API" (Rachel,
+// Grace, Dorothy, Sam, Josh, James and others do). Listing those would mean the
+// picker offered voices that silently fail, so only verified ones appear here.
+//
+// Upgrading the plan unlocks the rest of the library.
 const ELEVENLABS_VOICES = [
-  { id: "21m00Tcm4TlvDq8ikWAM", label: "Rachel — warm, clear female (US)" },
-  { id: "EXAVITQu4vr4xnSDxMaL", label: "Sarah — soft, calm female (US)" },
+  { id: "EXAVITQu4vr4xnSDxMaL", label: "Sarah — warm, clear female (US)" },
   { id: "pNInz6obpgDQGcFmaJgB", label: "Elli — young, bright female (US)" },
-  { id: "MF3mGyEYCl7XYWbV9V6O", label: "Grace — friendly female (US)" },
   { id: "XrExE9yKIg1WjnnlVkGX", label: "Lily — cheerful, storytelling female (US)" },
-  { id: "ThT5KcBeYPX3keUQqHPh", label: "Dorothy — gentle older female (US)" },
   { id: "Xb7hH8MSUJpSbSDYk0k2", label: "Alice — poised female (UK)" },
   { id: "IKne3meq5aSn9XLyUdCD", label: "Charlotte — warm female (UK)" },
-  { id: "GBv7mTt0atIp3Br8iCZE", label: "Alice — female (UK)" },
   { id: "nPczCjzI2devNBz1zQrb", label: "Brian — deep, steady male (US)" },
-  { id: "VR6AewLTigWG4xSOukaG", label: "Arnold — gravelly male (US)" },
-  { id: "yoZ06aMxZJJ28mfd3POQ", label: "Sam — raspy male (US)" },
-  { id: "TxGEqnHWrfWFTfGW9XjX", label: "Josh — young male (US)" },
-  { id: "ZQe5CZNOzWyzPSCn5a3c", label: "James — deep male (UK)" },
+  { id: "VR6AewLTigWG4xSOukaG", label: "Arnold — warm male (US)" },
   { id: "onwK4e9ZLuTAKqWW03F9", label: "Daniel — authoritative male (UK)" },
 ];
 
