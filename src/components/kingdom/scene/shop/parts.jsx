@@ -33,6 +33,10 @@ export function Window({
   seed = 0,
   bar = true,
   sill = true,
+  /** A hay-loft opening: dark, hoisted, no glass. Overrides everything else. */
+  loft = false,
+  /** A ventilation slit: a bare gap. Overrides everything else. */
+  slit = false,
 }) {
   const out = [];
   const t = tones(MAT.stoneLight);
@@ -171,6 +175,82 @@ export function Window({
   if (shutters !== "none") {
     out.push(leaf(-1));
     out.push(leaf(1));
+  }
+
+  if (loft) {
+    // A hay-loft opening. The same hole in the wall, but there is no glass and
+    // no glazing bars: hay goes in on a pole through this. Dark inside, with
+    // the sheaves stacked just inside catching the light, and a hoist beam
+    // across the head of it.
+    out.length = 0;
+    out.push(
+      <polygon
+        key="lr"
+        points={wallRect(axis, plane, u - w / 2 - 0.03, u + w / 2 + 0.03, z - 0.03, z + h + 0.03, 0.03)}
+        fill={MAT.beamDark}
+      />,
+    );
+    out.push(
+      <polygon
+        key="lin"
+        points={wallRect(axis, plane, u - w / 2, u + w / 2, z, z + h, -0.03)}
+        fill={shade(MAT.beamDark, -0.1)}
+      />,
+    );
+    out.push(
+      <polygon
+        key="loftfloor"
+        points={wallRect(axis, plane, u - w / 2, u + w / 2, z, z + h * 0.3, -0.02)}
+        fill={shade(MAT.thatch, 0.12)}
+        opacity={0.5}
+      />,
+    );
+    // The hoist beam, seen end-on above the opening.
+    out.push(
+      <polygon
+        key="hoist"
+        points={wallRect(axis, plane, u - 0.022, u + 0.022, z + h - 0.02, z + h + 0.03, 0.06)}
+        fill={MAT.beam}
+      />,
+    );
+    // Rope hanging from the hoist, disappearing into the dark.
+    out.push(
+      <polygon
+        key="rope"
+        points={wallRect(axis, plane, u - 0.006, u + 0.006, z + h * 0.24, z + h - 0.02, 0.055)}
+        fill="#c9b183"
+        opacity={0.8}
+      />,
+    );
+  }
+
+  if (slit) {
+    // A ventilation slit: a plain dark gap with a stone lintel, no joinery at
+    // all. Deliberately the cheapest opening in the kit, so it reads as a hole
+    // rather than a window.
+    out.length = 0;
+    out.push(
+      <polygon
+        key="sl"
+        points={wallRect(axis, plane, u - w / 2 - 0.024, u + w / 2 + 0.024, z + h, z + h + 0.03, 0.024)}
+        fill={MAT.stoneLight}
+      />,
+    );
+    out.push(
+      <polygon
+        key="sld"
+        points={wallRect(axis, plane, u - w / 2, u + w / 2, z, z + h, -0.02)}
+        fill={MAT.glassDeep}
+      />,
+    );
+    out.push(
+      <polygon
+        key="slb"
+        points={wallRect(axis, plane, u - w / 2 + 0.01, u + w / 2 - 0.01, z + h - 0.016, z + h - 0.004, -0.014)}
+        fill={shade(MAT.glassDeep, 0.5)}
+        opacity={0.5}
+      />,
+    );
   }
 
   return <g data-role="window" data-shutters={shutters}>{out}</g>;

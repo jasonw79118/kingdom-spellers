@@ -2,17 +2,23 @@
 // described. Unlike scripts/look.mjs this needs no login and no dev-server
 // middleware: it loads the built route in headless Edge and shoots the page.
 //
-// Usage: node scripts/look-shop.mjs [seed] [width] [height]
+// Usage: node scripts/look-shop.mjs [seed] [width] [height] [outName]
+//
+// Writes .snap/<outName>.png, defaulting to shop-seed<seed>.png, and records
+// the exact URL and size next to it so a capture can always be traced back to
+// the variant that produced it. Judging architecture needs pixels large enough
+// to see the framing, so the default is deliberately generous.
 
 import fs from "node:fs";
 import path from "node:path";
 import { execFileSync } from "node:child_process";
 
 const seed = process.argv[2] ?? "3";
-const width = Number(process.argv[3] || 1600);
-const height = Number(process.argv[4] || 1200);
-const port = process.argv[5] || "3000";
-const base = process.argv[6] || "kingdom-spellers";
+const width = Number(process.argv[3] || 2400);
+const height = Number(process.argv[4] || 1500);
+const outName = process.argv[5] || `shop-seed${seed}`;
+const port = process.argv[6] || "3000";
+const base = process.argv[7] || "kingdom-spellers";
 
 const root = path.resolve(".snap");
 fs.mkdirSync(root, { recursive: true });
@@ -27,7 +33,8 @@ if (!EDGE) {
   process.exit(1);
 }
 
-const url = `http://localhost:${port}/${base}/#/showroom?seed=${encodeURIComponent(seed)}`;
+const url = `http://127.0.0.1:${port}/${base}/#/showroom?seed=${encodeURIComponent(seed)}`;
+const outFile = path.join(root, `${outName}.png`);
 const profile = fs.mkdtempSync(path.join(process.env.TEMP || ".", "ks-shop-"));
 
 try {
@@ -40,16 +47,18 @@ try {
       "--no-first-run",
       `--user-data-dir=${profile}`,
       `--window-size=${width},${height}`,
-      `--screenshot=${path.join(root, "shop.png")}`,
-      `--virtual-time-budget=6000`,
-      // Force the seed before first paint of the cards.
-      `--run-all-compositor-stages-before-draw`,
+      `--screenshot=${outFile}`,
+      // Long enough for a cold Vite dev server to transform the art system and
+      // for the cards' useLayoutEffect to measure and set their viewBoxes.
+      `--virtual-time-budget=20000`,
+      "--run-all-compositor-stages-before-draw",
       url,
     ],
-    { stdio: "ignore", timeout: 90000 },
+    { stdio: "ignore", timeout: 120000 },
   );
-  console.log(path.join(root, "shop.png"));
-  console.log(`seed=${seed} ${width}x${height} ${url}`);
+  const kb = Math.round(fs.statSync(outFile).size / 1024);
+  console.log(outFile);
+  console.log(`  seed=${seed}  ${width}x${height}  ${kb} kB  ${url}`);
 } finally {
   fs.rmSync(profile, { recursive: true, force: true });
 }

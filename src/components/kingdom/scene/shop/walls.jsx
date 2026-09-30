@@ -230,26 +230,76 @@ export function Wall({
   const rects = pattern === "plaster" ? [] : frameRects(u0, u1, z0, z1, bw, studs, pattern);
   const braces = pattern === "plaster" ? [] : frameBraces(u0, u1, z0, z1, bw, pattern);
 
+  // The plaster is drawn as one patch per structural bay rather than as a
+  // single quad for the whole wall. Two reasons, and they are the same reason:
+  // a real timber frame is infilled bay by bay, each panel limewashed
+  // separately and dried to a slightly different tone, and a wall broken into
+  // bays cannot be read as one flat colour at any distance.
+  //
+  // Bay edges follow the frame itself - the corner posts, then one panel
+  // between each pair of studs - so the plaster panels land exactly where the
+  // carpentry says they should. Unframed "plaster" walls are simply divided up
+  // to a plausible panel width.
+  const bayEdges = [u0, u1];
+  if (pattern === "plaster") {
+    const n = Math.max(2, Math.round((u1 - u0) / 0.42));
+    for (let i = 1; i < n; i += 1) bayEdges.push(u0 + ((u1 - u0) * i) / n);
+  } else {
+    bayEdges.push(u0 + bw, u1 - bw);
+    const span = u1 - u0 - bw * 2;
+    for (let i = 1; i <= studs; i += 1) {
+      bayEdges.push(u0 + bw + (span * i) / (studs + 1));
+    }
+  }
+  bayEdges.sort((a, b) => a - b);
+  const bays = [];
+  for (let i = 0; i < bayEdges.length - 1; i += 1) {
+    const a = bayEdges[i];
+    const b = bayEdges[i + 1];
+    if (b - a < 0.02) continue;
+    bays.push({ a, b, t: deterministic(seed, i) });
+  }
+
+  const h = z1 - z0;
+  // Bays overlap by a hair so antialiasing cannot open a seam between them.
+  // There is deliberately no full-wall quad behind them: one flat fill the size
+  // of the whole wall is the single thing that makes an illustration read as a
+  // shaded rectangle.
+  const OVERLAP = 0.004;
+
   return (
     <g key={key} data-role="wall" data-pattern={pattern}>
-      {/* Plaster field. Two overlapping washes so it is never one dead colour. */}
-      <polygon points={wallRect(axis, plane, u0, u1, z0, z1, out)} fill={t.front} />
-      <polygon
-        points={wallRect(axis, plane, u0, (u0 + u1) / 2, z0, z1, out + 0.001)}
-        fill={shade(fill, 0.07)}
-        opacity={0.7}
-      />
-      <polygon
-        points={wallRect(axis, plane, (u0 + u1) / 2, u1, z0, z1, out + 0.001)}
-        fill={shade(fill, -0.07)}
-        opacity={0.7}
-      />
-      {/* A faint wash of damp rising from the ground. */}
-      <polygon
-        points={wallRect(axis, plane, u0, u1, z0, z1 - (z1 - z0) * 0.45, out + 0.002)}
-        fill={shade(fill, -0.12)}
-        opacity={0.35}
-      />
+      {bays.map((bay, i) => {
+        const a = Math.max(u0, bay.a - OVERLAP);
+        const b = Math.min(u1, bay.b + OVERLAP);
+        // Each limewashed panel dries a little differently. Small, but it is
+        // the difference between a wall and a swatch.
+        const tone = shade(fill, (bay.t - 0.5) * 0.11);
+        return (
+          <g key={`bay${i}`}>
+            <polygon points={wallRect(axis, plane, a, b, z0, z1, out + 0.001)} fill={tone} />
+            {/* Lighter toward the top, where the eaves shed the rain. */}
+            <polygon
+              points={wallRect(axis, plane, a, b, z1 - h * 0.34, z1, out + 0.002)}
+              fill={shade(tone, 0.09)}
+              opacity={0.75}
+            />
+            {/* Damp and staining creeping up from the ground. */}
+            <polygon
+              points={wallRect(axis, plane, a, b, z0, z0 + h * 0.4, out + 0.002)}
+              fill={shade(tone, -0.13)}
+              opacity={0.5}
+            />
+            {/* A hairline joint where two bays meet, so the frame reads. */}
+            <path
+              d={wallLine(axis, plane, bay.b, z0, bay.b, z1, out + 0.003)}
+              stroke={shade(tone, -0.22)}
+              strokeWidth={0.6}
+              opacity={0.5}
+            />
+          </g>
+        );
+      })}
 
       {/* Timber: each beam gets a dark body and a lit top edge, so it stands
           proud of the plaster instead of being painted on it. */}
@@ -347,6 +397,16 @@ export function Footing({ axis = "x", plane, u0, u1, z0, h = 0.13, out = 0, seed
       <polygon points={wallRect(axis, plane, u0, u1, z0 + h, z0 + h + 0.022, out + 0.008)} fill={MAT.stoneLight} />
     </g>
   );
+}
+
+/**
+ * A stable pseudo-random number in [0,1) for a given seed and index. Used for
+ * the per-bay plaster tone, so a wall looks hand-limewashed but never changes
+ * between renders.
+ */
+function deterministic(seed, i) {
+  const x = Math.sin((seed + 1) * 12.9898 + i * 78.233) * 43758.5453;
+  return x - Math.floor(x);
 }
 
 function round(n) {

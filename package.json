@@ -14,6 +14,9 @@
     "dev:proxy": "node scripts/dev-tts-proxy.mjs",
     "verify:schema": "node scripts/verify-schema.mjs",
     "verify:game": "node scripts/verify-game.mjs",
+    "audit:shop": "node scripts/audit-shop.mjs",
+    "audit:scene": "node scripts/audit-scene.mjs",
+    "snap:shop": "node scripts/look-shop.mjs",
     "test": "node scripts/verify-game.mjs"
   },
   "dependencies": {

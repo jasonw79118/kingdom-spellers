@@ -102,7 +102,6 @@ export function Cottage({ x = 0, y = 0, seed = 0, lit = true }) {
         w={0.17} d={0.17} seed={seed} />
       <Chimney x={x + W * 0.82} y={y + D * 0.26} z={H + 0.1} zTop={H + RISE + 0.12}
         w={0.13} d={0.13} seed={seed + 1} />
-        w={0.17} d={0.17} seed={seed} />
 
       {/* --- cross-wing: a lower, thatched extension ------------------------ */}
       <Wall axis="y" plane={x + W + wingW} u0={y + D - wingD} u1={y + D} z0={0} z1={H * 0.72}
@@ -261,6 +260,9 @@ export function Blacksmith({ x = 0, y = 0, seed = 0, lit = true }) {
   const H = 0.66;
   const bayW = 0.62;
   const bayD = 0.5;
+  // Where the rubble plinth ends and the timber storey begins. Low enough that
+  // the cart door still fits under it.
+  const zSplit = H * 0.7;
   const zRoof = H;
 
   return (
@@ -268,15 +270,34 @@ export function Blacksmith({ x = 0, y = 0, seed = 0, lit = true }) {
       <Ground x={x} y={y} w={W + bayW} d={D + bayD} o={0.13} />
 
       {/* --- main shop: stone below, timber above ------------------------- */}
-      <Wall axis="y" plane={x + W} u0={y} u1={y + D} z0={0} z1={H}
+      <Wall axis="y" plane={x + W} u0={y} u1={y + D} z0={0} z1={zSplit}
         fill={stone} pattern="stone" seed={seed} />
-      <Wall axis="x" plane={y + D} u0={x} u1={x + W} z0={0} z1={H}
+      <Wall axis="x" plane={y + D} u0={x} u1={x + W} z0={0} z1={zSplit}
         fill={stone} pattern="stone" seed={seed + 1} />
       <Footing axis="x" plane={y + D} u0={x} u1={x + W} z0={0} h={0.1} seed={seed} />
       <Footing axis="y" plane={x + W} u0={y} u1={y + D} z0={0} h={0.1} seed={seed + 1} />
+      {/* A stone plinth with a timber-framed storey above it. Real smithies are
+          built this way - rubble at ground level where the hammer falls, light
+          timber above - and it gives the building the visible frame the brief
+          asks for, which a fully stone building never has. */}
+      <Wall axis="x" plane={y + D} u0={x} u1={x + W} z0={zSplit} z1={zRoof}
+        fill={plaster} pattern="timber" seed={seed + 5} studs={3} />
+      <Wall axis="y" plane={x + W} u0={y} u1={y + D} z0={zSplit} z1={zRoof}
+        fill={plaster} pattern="timber" seed={seed + 6} studs={2} />
+      {/* The jetty band where the timber storey oversails the stone. */}
+      <Jetty axis="x" plane={y + D} u0={x} u1={x + W} z={zSplit} count={6} seed={seed} />
+      <Jetty axis="y" plane={x + W} u0={y} u1={y + D} z={zSplit} count={5} seed={seed + 1} />
       <Door axis="x" plane={y + D} u={x + W * 0.42} z={0} w={0.26} h={0.4} seed={seed} open={false} />
-      <Window axis="x" plane={y + D} u={x + W - 0.26} z={0.32} w={0.18} h={0.2} shutters="none" lit={lit} seed={seed} />
-      <Window axis="y" plane={x + W} u={y + 0.34} z={0.34} w={0.18} h={0.2} shutters="none" lit={lit} seed={seed + 1} />
+      {/* Windows on the timber storey, shuttered open so the frame shows, and
+          unglazed openings in the stone below. */}
+      <Window axis="x" plane={y + D} u={x + 0.3} z={zSplit + 0.07} w={0.16} h={0.17}
+        shutters="open" lit={lit} seed={seed + 7} />
+      <Window axis="x" plane={y + D} u={x + W - 0.26} z={zSplit + 0.07} w={0.16} h={0.17}
+        shutters="closed" lit={lit} seed={seed} />
+      <Window axis="y" plane={x + W} u={y + 0.34} z={zSplit + 0.08} w={0.15} h={0.16}
+        shutters="one" lit={lit} seed={seed + 1} />
+      <Window axis="x" plane={y + D} u={x + W - 0.26} z={0.24} w={0.18} h={0.2} shutters="none" lit={lit} seed={seed} />
+      <Window axis="y" plane={x + W} u={y + 0.34} z={0.26} w={0.18} h={0.2} shutters="none" lit={lit} seed={seed + 1} />
       {/* A second, lower roof over a back extension, so the shop has two roof
           heights and the awning below is not the only step in the outline. */}
       <Roof x={x - 0.34} y={y - 0.02} w={0.4} d={D * 0.62} z={H * 0.8} rise={0.3}
@@ -817,6 +838,11 @@ export function FarmBuilding({ x = 0, y = 0, seed = 0, lit = true }) {
       <Door axis="x" plane={y + D} u={x + W * 0.66} z={0} w={0.42} h={0.5} seed={seed} open />
       <Door axis="x" plane={y + D} u={x + W * 0.28} z={0} w={0.24} h={0.36} seed={seed + 1} />
       <Window axis="y" plane={x + W} u={y + 0.42} z={0.34} w={0.18} h={0.2} shutters="open" lit={lit} seed={seed} />
+      <Window axis="y" plane={x + W} u={y + D - 0.36} z={0.34} w={0.18} h={0.2} shutters="closed" lit={lit} seed={seed + 2} />
+      {/* A hay-loft opening high in the gable, where a load of hay is tipped in
+          through the roof. A barn is mostly openings by function. */}
+      <Window axis="y" plane={x + W} u={y + D * 0.5} z={H * 0.68} w={0.24} h={0.19}
+        shutters="open" lit={false} seed={seed + 5} loft />
       {/* Louvred vent high in the gable. */}
       <Vent x={x + W * 0.66} y={y + D} z={H + R * 0.42} seed={seed} />
 
@@ -832,6 +858,12 @@ export function FarmBuilding({ x = 0, y = 0, seed = 0, lit = true }) {
         fill={shade(timber, -0.08)} pattern="timber" seed={seed + 2} studs={1} />
       <Wall axis="x" plane={y + D} u0={x + W} u1={x + W + leanW} z0={0} z1={H * 0.62}
         fill={shade(timber, -0.08)} pattern="timber" seed={seed + 3} studs={1} />
+      {/* The tool shed gets one small window, and a slit vent high in the
+          gable so the hay inside does not go mouldy. */}
+      <Window axis="x" plane={y + D} u={x + W + leanW * 0.52} z={0.2} w={0.15} h={0.16}
+        shutters="one" lit={lit} seed={seed + 4} />
+      <Window axis="x" plane={y + D} u={x + W + leanW * 0.52} z={H * 0.62 - 0.14} w={0.13} h={0.1}
+        shutters="none" lit={false} seed={seed + 9} slit />
       <LeanTo axis="x" plane={y + D} u0={x + W} u1={x + W + leanW}
         zHigh={H * 0.66} zLow={H * 0.3} depth={D * 0.8} face={thatch} seed={seed} detail={0.8} />
 
