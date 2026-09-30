@@ -73,6 +73,18 @@ const AUDIT = String.raw`
       const r = g.getAttribute("data-role");
       roles[r] = (roles[r] || 0) + 1;
     }
+    // Also count by role+pattern, so a check can insist on a stone wall
+    // specifically rather than on any wall at all.
+    const roleCounts = {};
+    for (const g of b.querySelectorAll("[data-role]")) {
+      const r = g.getAttribute("data-role");
+      const pat = g.getAttribute("data-pattern");
+      roleCounts[r] = (roleCounts[r] || 0) + 1;
+      if (pat) {
+        const k = r + "[" + pat + "]";
+        roleCounts[k] = (roleCounts[k] || 0) + 1;
+      }
+    }
 
     // --- roof sections ---------------------------------------------------
     // A "section" is a distinct roof mass, not a tile. Each has its own ridge
@@ -242,7 +254,7 @@ const AUDIT = String.raw`
 
     out.push({
       name, shapes: polys.length, nan: nan.length, nanSample: nan.slice(0, 3),
-      roles, roofMasses, roofGroups,
+      roles, roleCounts, roofMasses, roofGroups,
       beams, beamWall,
       windows, doors, shutters, shutterVariety,
       props, propTotal, propKinds,
@@ -572,7 +584,140 @@ for (let i = 0; i < names.length; i += 1) {
   lines.push(`          ${names[i].padEnd(14)} ${aspects[i].toFixed(2)}`);
 }
 
+// ---------------------------------------------------------------------------
+// The brief, checked against the art.
+//
+// SHOWROOM prints a spec list under every building. Those are claims, and a
+// claim printed next to a building is easy to write and never checked, so they
+// are the most likely thing in the showroom to be quietly wrong. Each line here
+// restates a spec bullet and names the data-roles that have to exist for it to
+// be true. "stone shop, timber upper" needs both a stone wall and a timber one;
+// "two chimneys" needs a count, not a presence.
+//
+// This costs nothing in the art files: the roles are already there for the
+// scene audit, so this is a table, not instrumentation.
+// ---------------------------------------------------------------------------
+
+const SPEC = {
+  Cottage: [
+    ["irregular footprint (main block + cross-wing)", { wall: 2, leanto: 1 }],
+    ["stone footing", { footing: 1 }],
+    ["timber-framed plaster walls", { "wall[timber]": 1 }],
+    ["steep pitched tile roof", { roof: 1 }],
+    ["dormer", { dormer: 1 }],
+    ["chimney", { chimney: 1 }],
+    ["shuttered windows, three different states", { window: 3 }, "shutterVariety>=3"],
+    ["porch with scalloped valance", { porch: 1 }],
+    ["thatched lower wing", { leanto: 1, "thatch-ridge": 1 }],
+    ["flower patch, woodpile, crate, barrel", { flowers: 1, woodpile: 1, crate: 1, barrel: 1 }],
+  ],
+  Blacksmith: [
+    ["stone shop, timber upper", { "wall[stone]": 1, "wall[timber]": 1 }],
+    ["open forge bay with a dark interior", { "forge-bay": 1 }],
+    ["lean-to awning on posts", { leanto: 1, post: 1 }],
+    ["hearth with fire, lit coals and flames", { hearth: 1 }],
+    ["anvil with horn", { anvil: 1 }],
+    ["chimney + iron cowl", { chimney: 1, cowl: 1 }],
+    ["hanging hammer sign", { sign: 1 }],
+    ["two woodpile stacks", { woodpile: 2 }],
+    ["barrels, crates, quench tub", { barrel: 1, crate: 1, quench: 1 }],
+  ],
+  Inn: [
+    // Two storeys is a vertical arrangement, not a named part, so it is checked
+    // as two wall groups on each face plus the jetty band between them.
+    ["two storeys", { wall: 4, jetty: 1 }],
+    ["jettied upper floor with visible beam ends", { jetty: 1 }],
+    ["multiple roof sections (main + cross-gable)", { roof: 1, "cross-gable": 1 }],
+    ["two chimneys", { chimney: 2 }],
+    ["hanging cup sign", { sign: 1 }],
+    ["porch and steps", { porch: 1, steps: 1 }],
+    ["balcony with turned balusters", { balcony: 1 }],
+    ["ground and upper window sets", { window: 4 }],
+    ["barrels, crates, bench, flowers", { barrel: 1, crate: 1, bench: 1, flowers: 1 }],
+  ],
+  Manor: [
+    ["stone ground floor", { "wall[stone]": 1 }],
+    ["jettied timber first floor", { jetty: 1, "wall[timber,upper]": 1 }],
+    ["corner tower with conical tiled roof and finial", { tower: 1 }],
+    ["two roof heights plus a cross-gable", { roof: 1, "cross-gable": 1 }],
+    ["three chimneys", { chimney: 3 }],
+    ["banner on a pole", { banner: 1 }],
+    ["mullioned narrow windows", { "narrow-window": 1 }],
+    ["arched door with portcullis and steps", { portcullis: 1, steps: 1 }],
+    ["walled courtyard with gate piers", { courtyard: 1 }],
+    ["balcony", { balcony: 1 }],
+  ],
+  Farm: [
+    ["attached lean-to", { leanto: 1 }],
+    ["thatched roof with bundled courses", { "thatch-roof": 1 }],
+    ["stepped roofline (main + cross-gable)", { "thatch-roof": 1, "cross-gable": 1 }],
+    ["big cart door and a second door", { door: 2 }],
+    ["louvred gable vent", { vent: 1 }],
+    ["two haystacks", { haystack: 2 }],
+    ["spoked cart", { cart: 1 }],
+    ["post-and-rail fence", { fence: 1 }],
+    ["scarecrow, barrel, crate, signboard", { scarecrow: 1, barrel: 1, crate: 1, signboard: 1 }],
+  ],
+};
+
+// Resolve a role key against the counts measured in the page. A key may name
+// several acceptable patterns, "wall[timber,upper]", and takes the largest of
+// them: the jettied top storey of a timber-framed building is drawn with the
+// "upper" pattern, and that is still a timber frame, so a check that only
+// accepted "timber" would be wrong rather than strict.
+function countRole(measured, key) {
+  const m = /^([^[]+)(?:\[([^\]]*)\])?$/.exec(key);
+  if (!m) return measured.roleCounts[key] || 0;
+  if (!m[2]) return measured.roleCounts[m[1]] || 0;
+  return m[2]
+    .split(",")
+    .map((p) => measured.roleCounts[`${m[1]}[${p.trim()}]`] || 0)
+    .reduce((a, b) => Math.max(a, b), 0);
+}
+
+const specLines = [];
+let specFailed = 0;
+const missingByBuilding = {};
+
 lines.push("");
+lines.push("AGAINST THE BRIEF");
+lines.push("=".repeat(78));
+lines.push("Every spec bullet printed under a building, checked against the geometry.");
+lines.push("");
+
+for (const name of names) {
+  const spec = SPEC[name];
+  if (!spec) {
+    specLines.push(`  ??  ${name}: no spec table in the audit`);
+    specFailed += 1;
+    continue;
+  }
+  const missing = [];
+  // A spec item must hold at every seed, for the same reason as everything else.
+  for (const run of all.get(name)) {
+    for (const [claim, need, extra] of spec) {
+      const gaps = [];
+      for (const [key, min] of Object.entries(need)) {
+        const have = countRole(run, key);
+        if (have < min) gaps.push(`${key} ${have}/${min}`);
+      }
+      if (extra === "shutterVariety>=3" && (run.shutterVariety || 0) < 3) {
+        gaps.push(`shutter states ${run.shutterVariety}/3`);
+      }
+      if (gaps.length) missing.push(`${claim}  [${gaps.join(", ")}]`);
+    }
+  }
+  if (missing.length) {
+    specFailed += missing.length;
+    for (const m of new Set(missing)) specLines.push(`  MISSING  ${m}`);
+  } else {
+    specLines.push(`  ok  ${name}: all ${spec.length} spec items present`);
+  }
+  missingByBuilding[name] = missing;
+}
+lines.push(...specLines);
+failed += specFailed;
+
 lines.push("=".repeat(78));
 lines.push(failed === 0
   ? `ALL CHECKS PASS across ${SEEDS.length} seeds.`
@@ -587,6 +732,7 @@ fs.writeFileSync(path.join(ROOT, "audit-shop.json"), JSON.stringify(
     buildings: Object.fromEntries([...all].map(([k, v]) => [k, v.map((r) => ({ ...r, mask: undefined }))])),
     aspects,
     pairs,
+    spec: missingByBuilding,
   },
   null,
   2,

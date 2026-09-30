@@ -312,6 +312,7 @@ export function Blacksmith({ x = 0, y = 0, seed = 0, lit = true }) {
       {/* A dark interior behind the posts, so the bay reads as a space. */}
       <polygon
         key="baydark"
+        data-role="forge-bay"
         points={P3([[x + W, y + D - bayD, 0], [x + W + bayW, y + D - bayD, 0], [x + W + bayW, y + D - bayD, H * 0.86], [x + W, y + D - bayD, H * 0.86]])}
         fill="#33281f"
       />
@@ -673,6 +674,11 @@ export function Manor({ x = 0, y = 0, seed = 0, lit = true }) {
         w={0.22} d={0.22} seed={seed} />
       <Chimney x={x + W * 0.12} y={y + D * 0.7} z={H1 + H2} zTop={H1 + H2 + R + 0.12}
         w={0.17} d={0.17} seed={seed + 1} />
+      {/* A third, smaller stack on the far slope. A manor heats several rooms
+          off separate flues, and three stacks at three heights stop the roofline
+          from reading as one ridge with two posts on it. */}
+      <Chimney x={x + W * 0.34} y={y + 0.1} z={H1 + H2} zTop={H1 + H2 + R * 0.72}
+        w={0.14} d={0.14} seed={seed + 2} />
 
       {/* --- the tower ------------------------------------------------------ */}
       <Tower x={x + W + JET - 0.02} y={y - 0.06} z={0} h={towerH} r={tw * 0.52} cap={0.5}
