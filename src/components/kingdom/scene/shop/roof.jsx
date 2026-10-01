@@ -25,20 +25,22 @@ const round = (n) => Math.round(n * 100) / 100;
 /**
  * One pitched slope.
  *
- * `dir` is +1 for the slope facing +y (down-left, the face the viewer reads)
- * and -1 for the far slope. Courses run parallel to the ridge; within each
- * course the seams are staggered, the way a real roofer lays them.
+ * `rx0`/`rx1` run along the ridge, `yEave` is the near eave, `yRidge` the
+ * ridge line. Which world axis each of those is depends on which way the ridge
+ * runs, so the caller passes `pt`, the same mapper the rest of Roof uses, and
+ * this function never assumes an order. Assuming one is a bug that only shows
+ * up on a roof whose ridge runs along y: the tiles come out transposed and the
+ * roof lands somewhere else on the ground entirely.
+ *
+ * Courses run parallel to the ridge; within each course the seams are
+ * staggered, the way a real roofer lays them.
  */
-function Slope({ rx0, rx1, yEave, zEave, yRidge, zRidge, face, seed, detail = 1 }) {
+function Slope({ rx0, rx1, yEave, zEave, yRidge, zRidge, face, seed, detail = 1, pt }) {
   const cols = Math.max(3, Math.round(Math.abs(rx1 - rx0) * 5 * detail));
   const rows = Math.max(2, Math.round(Math.abs(zRidge - zEave) * 26 * detail));
   const out = [];
 
-  const at = (t, u) => [
-    u,
-    yEave + (yRidge - yEave) * t,
-    zEave + (zRidge - zEave) * t,
-  ];
+  const at = (t, u) => pt(u, yEave + (yRidge - yEave) * t, zEave + (zRidge - zEave) * t);
 
   // Course tiles, each nudged in tone so the slope shimmers like fired clay.
   for (let r = 0; r < rows; r += 1) {
@@ -112,7 +114,9 @@ export function Roof({
   const s1 = alongX ? rx1 : ry1;             // far end
   const eNear = alongX ? ry1 : rx1;          // eave on the +y / +x side
   const eFar = alongX ? ry0 : rx0;
-  const m = alongX ? ym : y + w / 2;
+  // The ridge line, at the midpoint of whichever axis the roof does NOT run
+  // along. When the ridge runs along x that midpoint is in y, and vice versa.
+  const m = alongX ? ym : x + w / 2;
   void eFar;
 
   const pt = (s, e, zz) => (alongX ? [s, e, zz] : [e, s, zz]);
@@ -126,7 +130,7 @@ export function Roof({
 
   // The far slope is behind the ridge and invisible from a fixed camera, so it
   // is skipped; instead the ridge gets a proper capping course.
-  out.push(...Slope({ rx0: s0, rx1: s1, yEave: eNear, zEave: z, yRidge: m, zRidge: zr, face, seed, detail }));
+  out.push(...Slope({ rx0: s0, rx1: s1, yEave: eNear, zEave: z, yRidge: m, zRidge: zr, face, seed, detail, pt }));
 
   // Ridge capping: individual tiles straddling the crest.
   const caps = Math.max(4, Math.round(Math.abs(s1 - s0) * 9));

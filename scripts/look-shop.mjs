@@ -2,12 +2,17 @@
 // described. Unlike scripts/look.mjs this needs no login and no dev-server
 // middleware: it loads the built route in headless Edge and shoots the page.
 //
-// Usage: node scripts/look-shop.mjs [seed] [width] [height] [outName]
+// Usage: node scripts/look-shop.mjs [seed] [width] [height] [outName] [only]
 //
 // Writes .snap/<outName>.png, defaulting to shop-seed<seed>.png, and records
 // the exact URL and size next to it so a capture can always be traced back to
 // the variant that produced it. Judging architecture needs pixels large enough
 // to see the framing, so the default is deliberately generous.
+//
+// `only` is a SHOWROOM id (e.g. castle) and shows just that one card filling the
+// window. That is the only way to see masonry courses, merlons and tile seams
+// clearly enough to judge them; in the six-up sheet each card is a few hundred
+// pixels wide and the detail is gone.
 
 import fs from "node:fs";
 import path from "node:path";
@@ -17,8 +22,9 @@ const seed = process.argv[2] ?? "3";
 const width = Number(process.argv[3] || 2400);
 const height = Number(process.argv[4] || 1500);
 const outName = process.argv[5] || `shop-seed${seed}`;
-const port = process.argv[6] || "3000";
-const base = process.argv[7] || "kingdom-spellers";
+const only = process.argv[6] || "all";
+const port = process.argv[7] || "3000";
+const base = process.argv[8] || "kingdom-spellers";
 
 const root = path.resolve(".snap");
 fs.mkdirSync(root, { recursive: true });
@@ -33,7 +39,7 @@ if (!EDGE) {
   process.exit(1);
 }
 
-const url = `http://127.0.0.1:${port}/${base}/#/showroom?seed=${encodeURIComponent(seed)}`;
+const url = `http://127.0.0.1:${port}/${base}/#/showroom?seed=${encodeURIComponent(seed)}&only=${encodeURIComponent(only)}`;
 const outFile = path.join(root, `${outName}.png`);
 const profile = fs.mkdtempSync(path.join(process.env.TEMP || ".", "ks-shop-"));
 
@@ -58,7 +64,7 @@ try {
   );
   const kb = Math.round(fs.statSync(outFile).size / 1024);
   console.log(outFile);
-  console.log(`  seed=${seed}  ${width}x${height}  ${kb} kB  ${url}`);
+  console.log(`  seed=${seed}  only=${only}  ${width}x${height}  ${kb} kB  ${url}`);
 } finally {
   fs.rmSync(profile, { recursive: true, force: true });
 }

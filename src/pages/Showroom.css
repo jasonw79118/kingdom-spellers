@@ -67,6 +67,17 @@
   gap: 18px;
 }
 
+/* One card shown: drop the page width limit so the building gets the whole
+   window. Masonry courses and tile seams are the things under judgement, and
+   at six-up they are simply too small to see. */
+.shop-solo {
+  max-width: none;
+}
+
+.shop-solo .shop-grid {
+  grid-template-columns: 1fr;
+}
+
 .shop-card {
   margin: 0;
   border: 1px solid #ded2b8;

@@ -8,6 +8,7 @@
 // counted underneath so the judgement is not purely a feeling.
 
 import { Cottage, Blacksmith, Inn, Manor, FarmBuilding } from "./buildings.jsx";
+import { Castle } from "./castle.jsx";
 
 export const SHOWROOM = [
   {
@@ -93,6 +94,34 @@ export const SHOWROOM = [
     ],
     Draw: FarmBuilding,
   },
+  {
+    id: "castle",
+    name: "Castle",
+    spec: [
+      "battered stone plinth around the whole curtain",
+      "crenellated curtain wall, four faces",
+      "projecting gatehouse with arched gate",
+      "portcullis, raised",
+      "machicolations over the gate",
+      "great tower with conical roof",
+      "corner turrets at unequal heights",
+      "arrow loops",
+      "hall range with steep roof, dormers and two chimneys",
+      "drawbridge on chains",
+      "moat",
+      "pennant",
+      "cobbled yard with a well",
+      "ivy climbing the curtain walls",
+      "braziers lit on the wall walk",
+      "banners either side of the gate",
+      "yard stores: woodpiles, barrels, crates",
+      "supply cart and trestle stall in the yard",
+      "rubble and scrub where the masonry meets the ground",
+      "notice board on the gatehouse",
+      "painted strictly back to front, so the tower rises from behind the hall",
+    ],
+    Draw: Castle,
+  },
 ];
 
-export { Cottage, Blacksmith, Inn, Manor, FarmBuilding };
+export { Cottage, Blacksmith, Inn, Manor, FarmBuilding, Castle };

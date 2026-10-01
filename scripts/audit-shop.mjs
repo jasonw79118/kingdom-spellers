@@ -1,4 +1,4 @@
-// Building art audit: measure the five showroom buildings against the brief.
+// Building art audit: measure the showroom buildings against the brief.
 //
 // The brief's acceptance check is seven questions a human answers by looking:
 //
@@ -227,6 +227,80 @@ const AUDIT = String.raw`
       }
     }
 
+    // --- painter order ---------------------------------------------------
+    // In an isometric view a mass must be painted over anything behind it, and
+    // "behind" is exactly gx+gy. So the DOM order of sibling masses has to be
+    // ascending in depth. Get this wrong and nothing is missing from the file:
+    // both pieces are drawn completely, but the far one is drawn last, so it
+    // reads as floating in front of, or perched on top of, the near one. That
+    // is a silhouette-reading failure that no count of shapes or colours will
+    // ever catch, which is why it gets its own check.
+    //
+    // Each mass carries its own footprint centre as data-depth. Shared
+    // occupancy is sampled on the same 20x20 grid as the mask above, so a pair
+    // only counts as a conflict when their geometry genuinely overlaps.
+    //
+    // The batter is exempt: it is the foundation the whole building stands on,
+    // spans the entire footprint, and must always go down first. Depth order
+    // does not describe it.
+    const depthMasses = [];
+    Array.from(b.children).forEach((el, i) => {
+      const raw = el.getAttribute("data-depth");
+      if (raw === null) return;
+      const polys = Array.from(el.querySelectorAll("polygon")).filter(
+        (p) => !p.closest('[data-role="shadow"]'),
+      );
+      if (!polys.length) return;
+      const rings = polys.map((p) =>
+        (p.getAttribute("points") || "")
+          .trim().split(/\s+/)
+          .map((s) => s.split(",").map(Number))
+          .filter((q) => q.length >= 2 && !isNaN(q[0]) && !isNaN(q[1])),
+      );
+      const role = el.getAttribute("data-role") || el.tagName;
+      const face = el.getAttribute("data-face");
+      const cells = new Set();
+      if (bb && bb.width > 0 && bb.height > 0) {
+        const GRID = 20;
+        for (let gy = 0; gy < GRID; gy += 1) {
+          for (let gx = 0; gx < GRID; gx += 1) {
+            const px = bb.x + ((gx + 0.5) * bb.width) / GRID;
+            const py = bb.y + ((gy + 0.5) * bb.height) / GRID;
+            for (let k = 0; k < rings.length; k += 1) {
+              const ring = rings[k];
+              if (ring.length < 3) continue;
+              let inside = false;
+              for (let a = 0, c = ring.length - 1; a < ring.length; c = a, a += 1) {
+                const [xi, yi] = ring[a], [xj, yj] = ring[c];
+                if (yi > py !== yj > py && px < ((xj - xi) * (py - yi)) / (yj - yi) + xi) {
+                  inside = !inside;
+                }
+              }
+              if (inside) { cells.add(gy * GRID + gx); break; }
+            }
+          }
+        }
+      }
+      depthMasses.push({
+        i, role, face, depth: Number(raw), cells,
+        name: face ? role + "/" + face : role,
+      });
+    });
+
+    const depthInversions = [];
+    for (let a = 0; a < depthMasses.length; a += 1) {
+      for (let b2 = a + 1; b2 < depthMasses.length; b2 += 1) {
+        const A = depthMasses[a], B = depthMasses[b2];
+        if (A.role === "batter" || B.role === "batter") continue;
+        let shared = 0;
+        for (const c of A.cells) if (B.cells.has(c)) shared += 1;
+        if (shared === 0) continue;
+        if (A.depth > B.depth) {
+          depthInversions.push(B.name + " paints over " + A.name);
+        }
+      }
+    }
+
     // Massing aspect: the architecture alone, with the ground shadow out of it.
     const abb = (function () {
       let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
@@ -261,6 +335,7 @@ const AUDIT = String.raw`
       colours: colours.size, concentration: +concentration.toFixed(3),
       medianArea: Math.round(medianArea), largestArea: Math.round(areas[0] || 0),
       silhouetteVerts, fillW, fillH,
+      depthInversions, depthMassCount: depthMasses.length,
       mask: mask ? Array.from(mask) : null,
       aspect: abb && abb.height ? +(abb.width / abb.height).toFixed(2) : 0,
     });
@@ -335,6 +410,18 @@ const CHECKS = [
     label: "fills its frame without being cropped: 80-99%",
     test: (b) => b.fillW >= 80 && b.fillW <= 99 && b.fillH >= 80 && b.fillH <= 99,
     detail: (b) => `${b.fillW}%w ${b.fillH}%h`,
+  },
+  {
+    id: "depth-order",
+    label: "masses are painted back to front, in gx+gy order",
+    // Only applies where the art declares depths. A building drawn as one
+    // group has nothing to order, and should not be failed for it.
+    test: (b) => b.depthMassCount < 2 || b.depthInversions.length === 0,
+    detail: (b) => (b.depthMassCount < 2
+      ? "single mass, nothing to order"
+      : b.depthInversions.length === 0
+        ? `${b.depthMassCount} masses in depth order`
+        : b.depthInversions.join("; ")),
   },
 ];
 
@@ -657,6 +744,34 @@ const SPEC = {
     ["spoked cart", { cart: 1 }],
     ["post-and-rail fence", { fence: 1 }],
     ["scarecrow, barrel, crate, signboard", { scarecrow: 1, barrel: 1, crate: 1, signboard: 1 }],
+  ],
+  Castle: [
+    ["battered stone plinth around the whole curtain", { batter: 1 }],
+    ["crenellated curtain wall, four faces", { crenellations: 4 }],
+    ["projecting gatehouse with arched gate", { gatehouse: 1, arch: 1 }],
+    ["portcullis, raised", { portcullis: 1 }],
+    ["machicolations over the gate", { machicolations: 1 }],
+    ["great tower with conical roof", { keep: 1, roof: 1 }],
+    ["corner turrets at unequal heights", { turret: 2 }],
+    ["arrow loops", { "arrow-loop": 2 }],
+    ["hall range with steep roof and two chimneys", { hall: 1, chimney: 2 }],
+    ["drawbridge on chains", { drawbridge: 1 }],
+    ["moat", { moat: 1 }],
+    ["pennant", { pennant: 1 }],
+    ["cobbled yard with a well", { yard: 1, well: 1 }],
+    ["plank door to the hall", { door: 1 }],
+    // The complaint these answer is that the castle had the fewest props in the
+    // set while being by far the largest building, which reads as missing detail
+    // rather than as a design choice. Enforced so it cannot quietly regress.
+    ["ivy climbing the curtain walls", { ivy: 3 }],
+    ["braziers lit on the wall walk", { brazier: 3 }],
+    ["banners either side of the gate", { banner: 2 }],
+    ["yard stores: woodpiles, barrels, crates", { woodpile: 2, barrel: 3, crate: 3 }],
+    ["supply cart and trestle stall in the yard", { cart: 1, stall: 1 }],
+    ["rubble and scrub at the foot of the batter", { rubble: 1, weeds: 1 }],
+    ["notice board on the gatehouse", { signboard: 1 }],
+    // Checked structurally by the depth-order check, not by counting parts.
+    ["painted strictly back to front, so the tower rises from behind the hall", {}],
   ],
 };
 
