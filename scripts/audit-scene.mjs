@@ -76,26 +76,48 @@ const AUDIT = String.raw`
   }
 
   // --- 9. the grid must be invisible ---------------------------------------
-  // Inverse-project a screen point back to grid space. A quad whose four
-  // corners land on whole numbers, spanning exactly one cell, is a visible
-  // tile; that is the thing the brief forbids.
+  // Inverse-project a screen point back to grid space, then ask the real
+  // question: is this shape an axis-parallel rectangle in grid space?
+  //
+  // An earlier version of this check only looked for quads spanning exactly one
+  // whole cell. That was far too narrow, and it produced a false pass: the
+  // kingdom's fields are 1.7 x 1.3 rectangles with decimal corners, so they
+  // never matched, and the check reported "0 cell-aligned quads" on a scene
+  // containing eight hard-edged grid rectangles. A field drawn from
+  // (f.x, f.y) to (f.x + w, f.y) to (f.x + w, f.y + d) is axis-parallel whether
+  // or not those numbers happen to be whole.
+  //
+  // Two further guards keep this honest. Only shapes drawn directly in scene
+  // space are considered: anything inside a transformed ancestor is a building
+  // part or a scaled asset, and inverse-projecting it through an unknown
+  // transform is meaningless. And a floor on area stops a sliver of scenery
+  // registering as a tile.
   const inv = (sx, sy) => ({ gx: (sx / 32 + sy / 16) / 2, gy: (sy / 16 - sx / 32) / 2 });
-  const near = (v) => Math.abs(v - Math.round(v)) < 0.012;
+  const axisAligned = (v) => Math.abs(v - Math.round(v)) < 0.02;
+  const inSceneSpace = (el) => {
+    for (let n = el.parentElement; n && n.tagName !== "svg"; n = n.parentElement) {
+      const t = n.getAttribute && n.getAttribute("transform");
+      if (t && /translate|scale|rotate|matrix/.test(t)) return false;
+    }
+    return true;
+  };
   const cellQuads = [];
   for (const el of q("polygon")) {
     const raw = (el.getAttribute("points") || "").trim();
     if (!raw) continue;
+    if (!inSceneSpace(el)) continue;
     const pts = raw.split(/\s+/).slice(0, 4).map((p) => p.split(",").map(Number));
     if (pts.length !== 4 || pts.some((p) => p.length !== 2 || p.some((v) => !isFinite(v)))) continue;
     const g = pts.map(([sx, sy]) => inv(sx, sy));
-    if (!g.every((p) => near(p.gx) && near(p.gy))) continue;
-    const xs = new Set(g.map((p) => Math.round(p.gx)));
-    const ys = new Set(g.map((p) => Math.round(p.gy)));
-    if (xs.size === 2 && ys.size === 2) {
-      const spanX = Math.max(...[...xs]) - Math.min(...[...xs]);
-      const spanY = Math.max(...[...ys]) - Math.min(...[...ys]);
-      if (spanX === 1 && spanY === 1) cellQuads.push(raw.slice(0, 60));
-    }
+    // A rectangle in grid space: corners pair up into two values per axis,
+    // and each edge runs along one axis only.
+    const xs = [...new Set(g.map((p) => p.gx.toFixed(2)))];
+    const ys = [...new Set(g.map((p) => p.gy.toFixed(2)))];
+    if (xs.length !== 2 || ys.length !== 2) continue;
+    const w = Math.abs(+xs[1] - +xs[0]);
+    const d = Math.abs(+ys[1] - +ys[0]);
+    if (w * d < 0.25) continue; // too small to read as a drawn field
+    cellQuads.push({ w: +w.toFixed(2), d: +d.toFixed(2), raw: raw.slice(0, 60) });
   }
 
   // --- 1. the castle --------------------------------------------------------
