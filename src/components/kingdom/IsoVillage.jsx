@@ -32,7 +32,8 @@ import {
   Terrain, River, Roads, Plaza, Bridge,
 } from "./scene/terrain";
 import { Tree, Shrub, Hedge, Reeds, Rock, Flowers, woodland, speciesFor } from "./scene/flora";
-import { House, Shed, SCALE } from "./scene/homes";
+import { SCALE } from "./scene/homes";
+import { ShopHouse, ShopShed, houseFootprint, shedFootprint, ShopPlot, hasPlotArt, plotSeed } from "./scene/shop/place";
 import {
   Barrel, Crate, Haystack, Cart, Boat, Dock, Well, Stall, Fence, Signpost,
   Bench, Woodpile, Laundry, Banner, Fountain, Statue, Scarecrow, Campfire,
@@ -145,22 +146,25 @@ function usePlan({ kingdom, stage, p, coast, relief, river, roads, rand }) {
 
     const wantHouses = stageInfo(stage).cottages;
     let variant = 0;
+    let shedVariant = 0;
     for (const h of housePlan) {
       if (items.filter((i) => i.tag === "house").length >= wantHouses) break;
       const s = SCALE.house;
-      const r = rect(h.x, h.y, s.w, s.d);
+      variant += 1;
+      // Reserve what the building will actually occupy, not the nominal space
+      // it was offered: a scaled cottage is not the same width as a scaled inn,
+      // and a layout that reserves one and draws the other overlaps them. The
+      // same variant has to pick both, or the rect and the building disagree.
+      const fit = houseFootprint(variant, s.w, s.d);
+      const r = rect(h.x, h.y, fit.w, fit.d);
       if (!free(r, 0.16)) continue;
       // A house should front onto a road, not float in a field. Anything that
       // can't see the lane is skipped, which is what creates real clusters.
-      if (!corridor(h.x + s.w / 2, h.y + s.d / 2, 0.3) && variant % 3 !== 0) continue;
-      const tall = variant % 3 === 0;
-      variant += 1;
+      if (!corridor(h.x + fit.w / 2, h.y + fit.d / 2, 0.3) && variant % 3 !== 0) continue;
       add(r, (
-        <House
-          x={h.x} y={h.y} z={relief.at(h.x + s.w / 2, h.y + s.d / 2)}
-          w={s.w} d={s.d} h={tall ? s.h + 0.42 : s.h}
-          variant={variant * 5 + 1}
-          sign={variant % 7 === 3 ? "inn" : null}
+        <ShopHouse
+          x={h.x} y={h.y} z={relief.at(h.x + fit.w / 2, h.y + fit.d / 2)}
+          w={s.w} d={s.d} variant={variant}
         />
       ), 0.7, "house");
     }
@@ -168,9 +172,16 @@ function usePlan({ kingdom, stage, p, coast, relief, river, roads, rand }) {
     for (const sh of shedPlan) {
       if (items.filter((i) => i.tag === "shed").length >= Math.max(0, Math.round(wantHouses / 3))) break;
       const s = SCALE.shed;
-      const r = rect(sh.x, sh.y, s.w, s.d);
+      shedVariant += 1;
+      const fit = shedFootprint(shedVariant, s.w, s.d);
+      const r = rect(sh.x, sh.y, fit.w, fit.d);
       if (!free(r, 0.1)) continue;
-      add(r, <Shed x={sh.x} y={sh.y} z={relief.at(sh.x, sh.y)} variant={variant++} />, 0.4, "shed");
+      add(r, (
+        <ShopShed
+          x={sh.x} y={sh.y} z={relief.at(sh.x + fit.w / 2, sh.y + fit.d / 2)}
+          w={s.w} d={s.d} variant={shedVariant}
+        />
+      ), 0.4, "shed");
     }
 
     // -- 2. market stalls, in a row around the square ----------------------
@@ -467,6 +478,15 @@ export default function IsoVillage({
       if (plotState(built, b.id) !== PLOT.BUILT) continue;
       const a = ANCHORS[b.id] || { x: 5, y: 5, w: 1.6, d: 1.4 };
       const z = relief.at(a.x + a.w / 2, a.y + a.d / 2);
+      // Where the illustrated kit has something for this plot it is used, and
+      // the older prop art is kept for the plots it has nothing for - a well
+      // and a castle are not the same kind of thing as a cottage, and swapping
+      // them for a small house would be a downgrade dressed as an upgrade.
+      // The plot's own w/d are passed in so the art is fitted to the space the
+      // gameplay already reserved, rather than overhanging into its neighbours.
+      const art = hasPlotArt(b.id)
+        ? <ShopPlot id={b.id} w={a.w} d={a.d} seed={plotSeed(b.id)} lit />
+        : <IsoBuildingShapes id={b.id} />;
       out.push({
         depth: a.x + a.w / 2 + a.y + a.d / 2 + 1.4,
         node: (
@@ -478,7 +498,7 @@ export default function IsoVillage({
             data-gy={a.y.toFixed(2)}
             transform={`translate(${at(a.x, a.y, px(z)).x} ${at(a.x, a.y, px(z)).y})`}
           >
-            <IsoBuildingShapes id={b.id} />
+            {art}
           </g>
         ),
       });
