@@ -323,9 +323,14 @@ function CastleComplex({ roof, roofDark, wall, banner, gem }) {
  * stand on. Emitting the shapes directly means the village only has to wrap
  * them in a translate(), and the two coordinate spaces are guaranteed identical.
  */
-export function IsoBuildingShapes({ id }) {
+export function IsoBuildingShapes({ id, scale = 1 }) {
   const spec = SPECS[id] || SPECS.cottage;
-  return spec.draw();
+  if (scale === 1) return spec.draw();
+  // Uniform, about the plot origin. Non-uniform would shear the roof pitch, and
+  // these drawings are all built from the same grid-space primitives as the
+  // illustrated kit, so a plain scale is the only transform that leaves them
+  // looking like the same world.
+  return <g transform={`scale(${scale})`}>{spec.draw()}</g>;
 }
 
 /** Standalone rendering, for use outside the village (previews, shop cards). */

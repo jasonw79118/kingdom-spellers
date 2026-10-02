@@ -224,8 +224,13 @@ export function Hedge({ x, y, len = 2, angle = 0, z = 0, color }) {
 export function Reeds({ x, y, z = 0, s = 1, color = "#6f8f52", seed = 0 }) {
   const a = at(x, y, px(z));
   const rand = rng(seed + 3);
+  // Tagged so the scene audit can see them. They were emitted as a bare <g>
+  // with no role, which meant a whole riverside dressing drew correctly and was
+  // invisible to every instrument - the audit reported `reeds: 0` on a scene with
+  // a dozen reed clumps along its river. An instrument that cannot see the thing
+  // it measures will quietly pass a check that is not being made.
   return (
-    <g stroke={color} strokeWidth={1.5} strokeLinecap="round" fill="none">
+    <g data-role="reeds" data-s={s.toFixed(3)} data-gx={x.toFixed(3)} data-gy={y.toFixed(3)} stroke={color} strokeWidth={1.5} strokeLinecap="round" fill="none">
       {Array.from({ length: 4 }, (_, i) => {
         const dx = (rand() - 0.5) * 8;
         const h = 6 + rand() * 7;

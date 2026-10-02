@@ -18,6 +18,7 @@
 
 import { at, px } from "../geometry";
 import { Cottage, Blacksmith, Inn, Manor, FarmBuilding } from "./buildings";
+import { Castle } from "./castle";
 
 /**
  * Asset metadata. `w`/`d` include every part that sticks out past the walls -
@@ -30,6 +31,19 @@ export const SHOP = {
   inn: { w: 2.31, d: 1.63, h: 1.8, draw: Inn },
   manor: { w: 2.4, d: 1.75, h: 1.92, draw: Manor },
   farm: { w: 2.82, d: 1.35, h: 1.46, draw: FarmBuilding },
+
+  /**
+   * The castle. `w`/`d` are the walled enclosure, not everything the asset
+   * draws: the gatehouse block projects a further 0.42 past the curtain on the
+   * gate side, and the drawbridge and moat reach 0.92 beyond that.
+   *
+   * Those are allowed to bleed past the footprint deliberately. A castle whose
+   * moat stops exactly at its plot boundary reads as a diagram; the moat and
+   * the lowered drawbridge are the two things that make it look founded on
+   * ground rather than placed on it. The walled enclosure is what reserves
+   * space, and it is what stops the castle growing into its neighbours.
+   */
+  castle: { w: 3.6, d: 3.42, h: 2.9, draw: Castle },
 };
 
 /**
@@ -51,7 +65,16 @@ export const PLOT_ART = {
   schoolhouse: "cottage",
   townhall: "manor",
   well: null,
-  greenwoodcastle: null,
+
+  // Every territory's castle gets the illustrated castle. Each one reads the
+  // same kit, but PLOT_ART is keyed by plot and each plot has a different
+  // `variant`, so the banner colour differs per territory rather than all five
+  // castles flying identical cloth.
+  greenwoodcastle: "castle",
+  rivercastle: "castle",
+  highlandcastle: "castle",
+  crystalcastle: "castle",
+  dragoncastle: "castle",
 };
 
 /**
@@ -199,7 +222,7 @@ export function ShopPlot({ id, w, d, seed = 0, lit = true }) {
   return (
     <g data-asset={assetId} data-role="building" data-scale={scale.toFixed(3)}>
       <g transform={`scale(${scale})`}>
-        <Draw x={0} y={0} seed={seed} lit={lit} />
+        <Draw x={0} y={0} seed={seed} lit={lit} variant={seed} />
       </g>
     </g>
   );

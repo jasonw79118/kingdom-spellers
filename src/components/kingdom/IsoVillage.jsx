@@ -32,12 +32,13 @@ import {
   Terrain, River, Roads, Plaza, Bridge,
 } from "./scene/terrain";
 import { Tree, Shrub, Hedge, Reeds, Rock, Flowers, woodland, speciesFor } from "./scene/flora";
+import { Field } from "./scene/fields";
 import { SCALE } from "./scene/homes";
 import { ShopHouse, ShopShed, houseFootprint, shedFootprint, ShopPlot, hasPlotArt, plotSeed } from "./scene/shop/place";
 import {
   Barrel, Crate, Haystack, Cart, Boat, Dock, Well, Stall, Fence, Signpost,
   Bench, Woodpile, Laundry, Banner, Fountain, Statue, Scarecrow, Campfire,
-  Sheep, Cow, Pig, Chicken, Dog, Bird, Furrow, CropRow, Garden,
+  Sheep, Cow, Pig, Chicken, Dog, Bird, Furrow, Garden,
 } from "./scene/props";
 import { Crowd } from "./scene/people";
 import { IsoBuildingShapes } from "./IsoBuilding";
@@ -47,6 +48,35 @@ import {
 import "./IsoVillage.css";
 
 const MID = N / 2;
+
+/**
+ * How big the older prop art is, in grid units, measured from the drawings
+ * rather than guessed.
+ *
+ * These specs are drawn at whatever size suited the drawing, and only some of
+ * them happen to match the plot they stand on. The well is the clearest case: it
+ * is authored 1.5x1.5 units, which puts its 96px of ink on a 0.7x0.7 plot and
+ * pushes it over the bakery and the market. Measured in the composed scene, its
+ * ink came out 96px wide - exactly (1.5+1.5)*32, which confirms the spec rather
+ * than assuming it.
+ *
+ * So the fallback art is fitted to its plot the same way the illustrated kit is.
+ * Only entries listed here are scaled; anything not listed is drawn at its
+ * authored size, because most of them already fit and rescaling them would only
+ * introduce a new thing that could be wrong.
+ */
+const LEGACY_FOOTPRINT = {
+  well: { w: 1.5, d: 1.5 },
+};
+
+/** Uniform scale that makes `id` fit its plot. 1 when there is nothing to fit. */
+function legacyFit(id, w, d) {
+  const fp = LEGACY_FOOTPRINT[id];
+  if (!fp) return 1;
+  // 1.06 lets the art bleed very slightly past the plot, which is what the rest
+  // of the scene does - a building clipped exactly to its cell reads as tiled.
+  return Math.min(w / fp.w, d / fp.d) * 1.06;
+}
 
 /** Deterministic per-territory randomness, so a kingdom looks the same daily. */
 function useSeeded(seed) {
@@ -130,6 +160,16 @@ function usePlan({ kingdom, stage, p, coast, relief, river, roads, rand }) {
       { x: 2.6, y: 8.6, scale: "cottage", face: 0 },
       { x: 11.8, y: 4.4, scale: "cottage", face: 0 },
       { x: 4.8, y: 2.7, scale: "cottage", face: 0 },
+      // Outlying holdings, along the lane as it leaves east and climbs the west
+      // shoulder. Without these the whole village crowds the square, and check 6
+      // (six visibly different houses) cannot pass on four candidates - which is
+      // what happened when the lane was rerouted.
+      { x: 12.4, y: 7.9, scale: "cottage", face: 0 },
+      { x: 12.9, y: 4.8, scale: "cottage", face: 0 },
+      { x: 9.6, y: 3.0, scale: "cottage", face: 0 },
+      { x: 3.2, y: 4.0, scale: "cottage", face: 0 },
+      { x: 1.6, y: 6.2, scale: "cottage", face: 0 },
+      { x: 2.4, y: 8.9, scale: "cottage", face: 0 },
       // a second, tighter row behind the market — a cluster, not a grid
       { x: 7.0, y: 10.4, scale: "cottage", face: 0 },
       { x: 5.4, y: 10.9, scale: "cottage", face: 0 },
@@ -158,8 +198,12 @@ function usePlan({ kingdom, stage, p, coast, relief, river, roads, rand }) {
       const fit = houseFootprint(variant, s.w, s.d);
       const r = rect(h.x, h.y, fit.w, fit.d);
       if (!free(r, 0.16)) continue;
-      // A house should front onto a road, not float in a field. Anything that
-      // can't see the lane is skipped, which is what creates real clusters.
+      // A house should front onto a road, not float in a field. Most candidates must
+      // be able to see a road, which is what creates real clusters - but it cannot
+      // be a hard rule, or the scene's shape is decided by where the roads happen
+      // to run. Every third candidate is exempt, so the requirement shapes the
+      // layout without being able to empty it: rerouting a lane moves houses
+      // around, it does not silently delete them.
       if (!corridor(h.x + fit.w / 2, h.y + fit.d / 2, 0.3) && variant % 3 !== 0) continue;
       add(r, (
         <ShopHouse
@@ -200,29 +244,53 @@ function usePlan({ kingdom, stage, p, coast, relief, river, roads, rand }) {
     }
 
     // -- 3. fields, on the outskirts ---------------------------------------
+    // These used to be four-cornered polygons sitting on the plot's grid lines,
+    // which is the one shape that gives an isometric scene's cell grid away. The
+    // scene audit counted exactly eight of them and that was eight failed quads,
+    // not a coincidence: the count matched fieldPlan.length.
+    //
+    // Each field is now an irregular blob bounded by its own hedgerow, with
+    // ploughed rows trimmed to that boundary, a gate on the side facing the
+    // village, and a crop stage that differs from its neighbours. The crops are
+    // staggered on purpose - four standing-gold fields in a row reads as one
+    // field repeated, which is what the old "all fields are grain or all green"
+    // plan amounted to.
     const wantFields = stageInfo(stage).fields;
+    // Positions are fitted around the road network, not the other way round. They
+    // used to tile the whole southern band, which left no corridor for the lane
+    // and forced the road either to plough through the fields or to hug a
+    // straight line. A field needs a gate and somewhere for the track to come
+    // from, so the pockets are chosen first and the roads routed between them.
     const fieldPlan = [
-      { x: 1.6, y: 11.0, w: 1.7, d: 1.3, dir: "x", crop: "grain" },
-      { x: 3.7, y: 11.6, w: 1.5, d: 1.2, dir: "y", crop: "grain" },
-      { x: 5.7, y: 12.0, w: 1.6, d: 1.1, dir: "x", crop: "green" },
-      { x: 10.2, y: 11.2, w: 1.6, d: 1.2, dir: "x", crop: "green" },
-      { x: 11.9, y: 9.8, w: 1.3, d: 1.2, dir: "y", crop: "grain" },
-      { x: 1.5, y: 9.4, w: 1.4, d: 1.2, dir: "y", crop: "green" },
-      { x: 8.6, y: 12.4, w: 1.7, d: 1.0, dir: "x", crop: "grain" },
-      { x: 12.9, y: 6.6, w: 1.2, d: 1.4, dir: "x", crop: "green" },
+      { x: 10.9, y: 1.4, w: 1.5, d: 1.2, dir: "x", crop: "grain" },
+      { x: 12.7, y: 2.5, w: 1.2, d: 1.2, dir: "y", crop: "stubble" },
+      { x: 9.2, y: 2.4, w: 1.1, d: 1.0, dir: "x", crop: "green" },
+      { x: 10.6, y: 11.4, w: 1.5, d: 1.1, dir: "x", crop: "barley" },
+      { x: 12.4, y: 9.5, w: 1.2, d: 1.1, dir: "y", crop: "fallow" },
+      { x: 1.4, y: 11.2, w: 1.3, d: 1.0, dir: "y", crop: "green" },
+      { x: 4.6, y: 12.0, w: 1.1, d: 0.9, dir: "x", crop: "grain" },
+      { x: 12.9, y: 7.6, w: 1.1, d: 1.2, dir: "x", crop: "stubble" },
     ];
     for (const f of fieldPlan) {
       if (items.filter((i) => i.tag === "field").length >= wantFields) break;
       const r = rect(f.x, f.y, f.w, f.d);
       if (!free(r, 0.3)) continue;
-      const z = relief.at(f.x + f.w / 2, f.y + f.d / 2);
+      // Drape, rather than a single z for the whole field: a field pinned to one
+      // height while the hill beneath it rises is one of the ways a scene
+      // announces it was assembled.
+      const zAt = (gx, gy) => relief.at(gx, gy);
       add(r, (
-        <g>
-          <polygon points={`${at(f.x, f.y).x},${at(f.x, f.y).y} ${at(f.x + f.w, f.y).x},${at(f.x + f.w, f.y).y} ${at(f.x + f.w, f.y + f.d).x},${at(f.x + f.w, f.y + f.d).y} ${at(f.x, f.y + f.d).x},${at(f.x, f.y + f.d).y}`} fill={shade(p.field, -0.12)} />
-          {f.crop === "grain"
-            ? <CropRow x={f.x + 0.06} y={f.y + 0.06} z={z} w={f.w - 0.12} d={f.d - 0.12} rows={5} dir={f.dir} tone="#c9a227" seed={items.length} />
-            : <CropRow x={f.x + 0.06} y={f.y + 0.06} z={z} w={f.w - 0.12} d={f.d - 0.12} rows={4} dir={f.dir} tone="#5f9c3c" seed={items.length} />}
-        </g>
+        <Field
+          x={f.x}
+          y={f.y}
+          w={f.w}
+          d={f.d}
+          dir={f.dir}
+          crop={f.crop}
+          zAt={zAt}
+          seed={items.length + 1}
+          hedge={f.crop === "fallow" ? "#6a8f4a" : "#4e8b4a"}
+        />
       ), -0.4, "field");
     }
 
@@ -272,13 +340,19 @@ function usePlan({ kingdom, stage, p, coast, relief, river, roads, rand }) {
     // Woodland now grows where nothing has been built, in ragged belts, and
     // the village keeps only small planted trees, hedges and gardens.
     const woodFraction = stageInfo(stage).woodland;
+    // Every species appears in every wood, deliberately. A wood seeded from a
+    // short kind list ("oak, oak, pine") can roll nothing but those two, and then
+    // the map's tree variety is decided by a coin toss rather than by the art -
+    // which is how the audit was reporting three species on one kingdom and four
+    // on another. Listing all four in each seed makes the mix deliberate.
     const woodSeeds = [
-      { cx: 12.0, cy: 3.0, radius: 2.4, count: 16, kinds: ["oak", "oak", "pine", "birch"] },
-      { cx: 1.4, cy: 4.4, radius: 1.9, count: 11, kinds: ["oak", "pine", "oak", "young"] },
-      { cx: 2.2, cy: 12.4, radius: 1.7, count: 9, kinds: ["pine", "oak", "young"] },
-      { cx: 13.0, cy: 11.4, radius: 1.8, count: 10, kinds: ["oak", "birch", "pine"] },
-      { cx: 13.4, cy: 6.0, radius: 1.5, count: 7, kinds: ["pine", "oak"] },
-      { cx: 6.0, cy: 0.9, radius: 1.6, count: 8, kinds: ["pine", "oak", "young"] },
+      { cx: 12.0, cy: 3.0, radius: 2.4, count: 16, kinds: ["oak", "oak", "pine", "birch", "young"] },
+      { cx: 1.4, cy: 4.4, radius: 1.9, count: 11, kinds: ["oak", "pine", "birch", "young"] },
+      { cx: 2.2, cy: 12.4, radius: 1.7, count: 9, kinds: ["pine", "oak", "young", "birch"] },
+      { cx: 13.0, cy: 11.4, radius: 1.8, count: 10, kinds: ["oak", "birch", "pine", "young"] },
+      { cx: 13.4, cy: 6.0, radius: 1.5, count: 7, kinds: ["pine", "oak", "birch", "young"] },
+      { cx: 6.0, cy: 0.9, radius: 1.6, count: 8, kinds: ["pine", "oak", "young", "birch"] },
+      { cx: 9.4, cy: 13.2, radius: 1.5, count: 7, kinds: ["oak", "birch", "pine", "young"] },
     ];
     for (const w of woodSeeds) {
       const n = Math.round(w.count * woodFraction);
@@ -311,51 +385,95 @@ function usePlan({ kingdom, stage, p, coast, relief, river, roads, rand }) {
     }
 
     // -- 9. named props: the things a village actually has -----------------
+    // Each prop lists several candidate spots and takes the first that is clear.
+    //
+    // A single hard-coded coordinate per prop means the village's props are
+    // positioned against a layout that no longer exists: rerouting the lane moved
+    // the houses, and `free()` then rejected a cart, two barrels, a crate, two
+    // benches, two laundry lines, a campfire and a statue without a word. That is
+    // the worst possible failure for artwork — it disappears quietly, so the scene
+    // just looks emptier and nothing reports why. A candidate list makes placement
+    // robust to the layout changing underneath it, which it always will.
     const propPlan = [
-      { kind: "cart", x: 5.4, y: 6.9, s: 1, loaded: true },
-      { kind: "cart", x: 9.6, y: 6.4, s: 0.9, loaded: false },
-      { kind: "barrel", x: 6.3, y: 8.0, s: 1 },
-      { kind: "barrel", x: 6.7, y: 8.1, s: 0.85 },
-      { kind: "crate", x: 8.9, y: 5.9, s: 1, stack: 2 },
-      { kind: "hay", x: 2.0, y: 10.6, s: 0.9 },
-      { kind: "hay", x: 4.6, y: 12.4, s: 0.8 },
-      { kind: "woodpile", x: 4.4, y: 5.1, s: 1 },
-      { kind: "woodpile", x: 10.9, y: 3.9, s: 0.9 },
-      { kind: "signpost", x: 5.1, y: 6.4, s: 1 },
-      { kind: "signpost", x: 9.2, y: 5.4, s: 0.9 },
-      { kind: "bench", x: 7.3, y: 6.9, s: 1 },
-      { kind: "bench", x: 8.6, y: 5.9, s: 0.9 },
-      { kind: "laundry", x: 3.0, y: 5.5, s: 1 },
-      { kind: "laundry", x: 9.9, y: 5.1, s: 0.9 },
-      { kind: "scarecrow", x: 2.4, y: 11.5, s: 1 },
-      { kind: "scarecrow", x: 6.4, y: 12.4, s: 0.9 },
-      { kind: "campfire", x: 4.3, y: 9.6, s: 1 },
-      { kind: "boat", x: 4.0, y: 7.9, s: 1, angle: 12 },
-      { kind: "boat", x: 10.8, y: 9.3, s: 0.9, angle: -8 },
-      { kind: "statue", x: 7.4, y: 4.5, s: 1 },
-      { kind: "banner", x: 4.5, y: 4.0, s: 1, color: "#c1503f,✦" },
-      { kind: "banner", x: 8.8, y: 7.9, s: 0.95, color: "#4a6fa5,⚜" },
+      { kind: "cart", s: 1, loaded: true, spots: [[5.4, 6.9], [6.1, 6.6], [4.7, 7.2], [6.6, 6.3]] },
+      { kind: "cart", s: 0.9, loaded: false, spots: [[9.6, 6.4], [10.2, 6.1], [9.1, 6.7], [10.7, 6.4]] },
+      { kind: "barrel", s: 1, spots: [[6.3, 8.0], [5.7, 7.6], [6.8, 7.4], [5.2, 7.8]] },
+      { kind: "barrel", s: 0.85, spots: [[6.7, 8.1], [7.1, 7.6], [6.1, 7.3], [5.5, 8.2]] },
+      { kind: "crate", s: 1, stack: 2, spots: [[8.9, 5.9], [8.4, 5.5], [9.4, 5.5], [8.0, 6.1]] },
+      // Haystacks stand in the field margins: field A (10.9,1.4) and D (10.6,11.4).
+      { kind: "hay", s: 0.9, spots: [[12.4, 1.9], [12.0, 2.6], [12.6, 1.2], [11.6, 2.8]] },
+      { kind: "hay", s: 0.8, spots: [[9.5, 12.6], [9.1, 11.9], [9.9, 13.2], [8.7, 12.9]] },
+      { kind: "woodpile", s: 1, spots: [[4.4, 5.1], [4.0, 5.6], [3.6, 4.7], [4.9, 5.5]] },
+      { kind: "woodpile", s: 0.9, spots: [[10.9, 3.9], [11.4, 4.3], [10.4, 4.4], [11.9, 3.6]] },
+      { kind: "signpost", s: 1, spots: [[5.1, 6.4], [5.6, 6.2], [4.6, 6.6], [6.1, 6.1]] },
+      { kind: "signpost", s: 0.9, spots: [[9.2, 5.4], [8.7, 5.0], [9.7, 5.0], [8.2, 5.7]] },
+      // Benches face the square, on its western and northern sides.
+      { kind: "bench", s: 1, spots: [[6.5, 6.9], [6.3, 6.3], [7.0, 7.3], [6.0, 7.5]] },
+      { kind: "bench", s: 0.9, spots: [[8.6, 5.9], [8.1, 6.2], [9.1, 6.3], [7.9, 5.5]] },
+      { kind: "laundry", s: 1, spots: [[3.0, 5.5], [2.6, 5.9], [3.5, 5.1], [2.2, 5.2]] },
+      { kind: "laundry", s: 0.9, spots: [[9.9, 5.1], [10.4, 5.5], [9.4, 4.7], [10.9, 5.1]] },
+      // Scarecrows stand among the crops they guard.
+      { kind: "scarecrow", s: 1, spots: [[11.2, 11.9], [10.9, 11.6], [11.5, 12.2]] },
+      { kind: "scarecrow", s: 0.9, spots: [[4.9, 12.3], [5.3, 12.6], [4.5, 11.8]] },
+      { kind: "campfire", s: 1, spots: [[4.3, 9.6], [3.9, 10.0], [4.8, 9.9], [3.5, 9.3]] },
+      { kind: "boat", s: 1, angle: 12, spots: [[4.0, 7.9], [3.6, 8.2], [4.5, 8.3]] },
+      { kind: "boat", s: 0.9, angle: -8, spots: [[10.8, 9.3], [11.2, 9.6], [10.4, 9.6]] },
+      { kind: "statue", s: 1, spots: [[7.4, 4.5], [7.0, 4.9], [6.6, 4.3], [7.9, 4.9]] },
+      { kind: "banner", s: 1, color: "#c1503f,✦", spots: [[4.5, 4.0], [4.0, 4.4], [5.0, 4.4], [3.6, 3.7]] },
+      { kind: "banner", s: 0.95, color: "#4a6fa5,⚜", spots: [[8.8, 7.9], [8.4, 8.2], [9.3, 8.2], [8.0, 7.6]] },
     ];
+    // The budget is spent one kind at a time, round-robin.
+    //
+    // This list was previously consumed in array order, so a budget of 7 took the
+    // first seven entries - cart, cart, barrel, barrel, crate, hay, hay - and the
+    // remaining six kinds were never drawn at all. Variety was being decided by
+    // list position, and the audit reported 7 prop kinds on a scene that has 13
+    // kinds available. Interleaving means a small budget buys breadth rather than
+    // a third cart, which is also the better-looking outcome: a village reads as
+    // inhabited by the range of things in it, not the quantity of one thing.
+    const byKind = new Map();
+    for (const pr of propPlan) {
+      if (!byKind.has(pr.kind)) byKind.set(pr.kind, []);
+      byKind.get(pr.kind).push(pr);
+    }
+    const propOrder = [];
+    for (let round = 0; propOrder.length < propPlan.length; round += 1) {
+      let added = false;
+      for (const list of byKind.values()) {
+        if (list[round]) { propOrder.push(list[round]); added = true; }
+      }
+      if (!added) break;
+    }
     const propCount = Math.round(wantProps / 1.6);
     let propPlaced = 0;
-    for (const pr of propPlan) {
+    for (const pr of propOrder) {
       if (propPlaced >= propCount) break;
-      const r = rect(pr.x - 0.3, pr.y - 0.3, 0.6, 0.6);
-      if (!free(r, -0.05)) continue;
-      const z = relief.at(pr.x, pr.y);
-      const node = pr.kind === "cart" ? <Cart {...pr} z={z} />
-        : pr.kind === "barrel" ? <Barrel {...pr} z={z} />
-        : pr.kind === "crate" ? <Crate {...pr} z={z} />
-        : pr.kind === "hay" ? <Haystack {...pr} z={z} />
-        : pr.kind === "woodpile" ? <Woodpile {...pr} z={z} />
-        : pr.kind === "signpost" ? <Signpost {...pr} z={z} />
-        : pr.kind === "bench" ? <Bench {...pr} z={z} />
-        : pr.kind === "laundry" ? <Laundry {...pr} z={z} />
-        : pr.kind === "scarecrow" ? <Scarecrow {...pr} z={z} />
-        : pr.kind === "campfire" ? <Campfire {...pr} z={z} />
-        : pr.kind === "boat" ? <Boat {...pr} z={z} />
-        : pr.kind === "statue" ? <Statue {...pr} z={z} />
-        : <Banner {...pr} z={z} />;
+      // Take the first clear candidate spot.
+      let spot = null;
+      for (const [sx, sy] of pr.spots) {
+        const rr = rect(sx - 0.3, sy - 0.3, 0.6, 0.6);
+        if (free(rr, -0.05)) { spot = [sx, sy, rr]; break; }
+      }
+      if (!spot) continue;
+      const [sx, sy, r] = spot;
+      const z = relief.at(sx, sy);
+      // `spots` is placement bookkeeping and is not part of the prop's appearance, so
+      // it is dropped from the spread rather than passed into every component.
+      const a = { ...pr, x: sx, y: sy };
+      delete a.spots;
+      const node = pr.kind === "cart" ? <Cart {...a} z={z} />
+        : pr.kind === "barrel" ? <Barrel {...a} z={z} />
+        : pr.kind === "crate" ? <Crate {...a} z={z} />
+        : pr.kind === "hay" ? <Haystack {...a} z={z} />
+        : pr.kind === "woodpile" ? <Woodpile {...a} z={z} />
+        : pr.kind === "signpost" ? <Signpost {...a} z={z} />
+        : pr.kind === "bench" ? <Bench {...a} z={z} />
+        : pr.kind === "laundry" ? <Laundry {...a} z={z} />
+        : pr.kind === "scarecrow" ? <Scarecrow {...a} z={z} />
+        : pr.kind === "campfire" ? <Campfire {...a} z={z} />
+        : pr.kind === "boat" ? <Boat {...a} z={z} />
+        : pr.kind === "statue" ? <Statue {...a} z={z} />
+        : <Banner {...a} z={z} />;
       add(r, node, 0.2, "prop");
       propPlaced += 1;
     }
@@ -486,7 +604,7 @@ export default function IsoVillage({
       // gameplay already reserved, rather than overhanging into its neighbours.
       const art = hasPlotArt(b.id)
         ? <ShopPlot id={b.id} w={a.w} d={a.d} seed={plotSeed(b.id)} lit />
-        : <IsoBuildingShapes id={b.id} />;
+        : <IsoBuildingShapes id={b.id} scale={legacyFit(b.id, a.w, a.d)} />;
       out.push({
         depth: a.x + a.w / 2 + a.y + a.d / 2 + 1.4,
         node: (
@@ -629,7 +747,7 @@ export default function IsoVillage({
 
         <rect x={-900} y={-600} width={1800} height={1200} fill={`url(#ks-sky-${kingdom.theme})`} />
 
-        <Terrain p={p} coast={coast} relief={relief} mid={MID} />
+        <Terrain p={p} coast={coast} relief={relief} mid={MID} seed={kingdom.id * 7 + 29} />
         {/* Water and roads are clipped to the coastline: they enter and leave the
             map at the shore instead of running off into the sky. */}
         <g clipPath={`url(#ks-land-${kingdom.theme})`}>

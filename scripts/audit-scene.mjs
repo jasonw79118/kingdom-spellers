@@ -167,18 +167,47 @@ const AUDIT = String.raw`
   const roadInfo = roads.map((r) => {
     const polys = Array.from(r.querySelectorAll("polygon"));
     const centre2 = centrelineOf(polys[1] || polys[0]);
-    let turns = 0, straight = 0, run = 1;
+    // Total turning: the sum of heading change along the whole centreline.
+    //
+    // This replaced a "count of samples whose heading changed by >8deg"
+    // statistic, and the replacement was not cosmetic. That count is a function
+    // of how densely the centreline happens to be sampled: per-sample heading
+    // change falls as 1/N, so a road with three obvious bends and 190deg of
+    // total turning scores zero once it is sampled more finely than about 40
+    // points, while a genuinely straight road also scores zero. The gate
+    // required >=2, so it was unreachable for any well-sampled road - raising
+    // the artwork could never have passed it, and a check that cannot fail is
+    // worthless.
+    //
+    // Total turning is density-independent (measured 190.1deg at 12 samples and
+    // 199.6deg at 200 for the same curve) and separates the cases that matter:
+    // straight 0deg, the kingdom's current near-straight roads 9-33deg, and a
+    // properly winding lane over 45deg.
+    let total = 0;
     for (let i = 2; i < centre2.length; i += 1) {
       const a1 = Math.atan2(centre2[i - 1][1] - centre2[i - 2][1], centre2[i - 1][0] - centre2[i - 2][0]);
       const a2 = Math.atan2(centre2[i][1] - centre2[i - 1][1], centre2[i][0] - centre2[i - 1][0]);
-      let d = Math.abs(((a2 - a1 + Math.PI * 3) % (Math.PI * 2)) - Math.PI);
-      if (d > 0.14) { turns += 1; run = 1; } else { run += 1; straight = Math.max(straight, run); }
+      total += Math.abs(((a2 - a1 + Math.PI * 3) % (Math.PI * 2)) - Math.PI);
+    }
+    // bendRatio: how far the worst point strays from the straight line joining
+    // its two ends, as a fraction of that line's length. A straight road is 0 by
+    // definition and no amount of resampling changes it. It catches a
+    // different failure from total turning: a road that wanders a lot but never
+    // goes anywhere, and a road that curves gently but doubles back on itself.
+    const chord0 = centre2[0];
+    const chord1 = centre2[centre2.length - 1];
+    const chx = chord1[0] - chord0[0];
+    const chy = chord1[1] - chord0[1];
+    const chordLen = Math.hypot(chx, chy) || 1;
+    let deviation = 0;
+    for (const [x, y] of centre2) {
+      deviation = Math.max(deviation, Math.abs(chx * (y - chord0[1]) - chy * (x - chord0[0])) / chordLen);
     }
     return {
       name: r.getAttribute("data-road"),
       samples: centre2.length,
-      turns,
-      longestStraightFraction: straight / Math.max(1, centre2.length),
+      totalTurningDeg: +(total * 180 / Math.PI).toFixed(1),
+      bendRatio: +(deviation / chordLen).toFixed(4),
       centreline: centre2,
     };
   });
@@ -380,8 +409,8 @@ const AUDIT = String.raw`
     },
     river: riverInfo,
     roads: roadInfo.map((r) => ({
-      name: r.name, samples: r.samples, turns: r.turns,
-      longestStraight: +r.longestStraightFraction.toFixed(2),
+      name: r.name, samples: r.samples,
+      totalTurningDeg: r.totalTurningDeg, bendRatio: r.bendRatio,
     })),
     clustering: {
       meanNN: +mean.toFixed(1),
@@ -445,9 +474,16 @@ function buildChecks(r) {
     {
       n: 4,
       q: "Do roads curve between destinations?",
+      // 45deg of total turning: a road that crosses the map in a straight line
+      // turns ~0deg, the kingdom's current roads turn 9-33deg and read as
+      // straight, and a lane that visibly winds turns well over 45. The 0.07
+      // bendRatio floor catches the complementary failure - a road whose
+      // total turning looks adequate but which never leaves its own chord.
+      // Both are density-independent, verified by resampling the same curve at
+      // 12 and 200 points.
       why: "no road may be a straight line or a straight grid line",
-      pass: r.roads.length >= 3 && r.roads.every((x) => x.turns >= 2 && x.longestStraight <= 0.4),
-      got: r.roads.map((x) => `${x.name}:${x.turns}turns/${x.longestStraight}straight`).join(", "),
+      pass: r.roads.length >= 3 && r.roads.every((x) => x.totalTurningDeg >= 45 && x.bendRatio >= 0.07),
+      got: r.roads.map((x) => `${x.name}:${x.totalTurningDeg}deg/bend ${x.bendRatio}`).join(", "),
     },
     {
       n: 5,
@@ -536,19 +572,42 @@ const proc = spawn(EDGE, [
   `file:///${page.replace(/\\/g, "/")}`,
 ], { stdio: ["ignore", "ignore", "pipe"] });
 
+// Tearing down a headless browser's profile on Windows races the process exit:
+// the profile is still locked for a moment after the kill, and rmSync throws
+// EBUSY on DevToolsActivePort. That is noise, not an audit result, so it must
+// never be allowed to propagate - a cleanup failure that aborts the run means a
+// gate that silently stops gating.
 const cleanup = () => {
   try { proc.kill(); } catch { /* already gone */ }
-  fs.rmSync(profile, { recursive: true, force: true });
+  for (let i = 0; i < 5; i += 1) {
+    try {
+      fs.rmSync(profile, { recursive: true, force: true, maxRetries: 4, retryDelay: 200 });
+      return;
+    } catch {
+      if (i === 4) {
+        // Leave the directory. It is a temp profile in the OS temp folder; a
+        // stale one is harmless, a crashed audit is not.
+        console.warn(`  note: could not remove ${profile}; it will be left in the temp folder`);
+      }
+    }
+  }
 };
 
 async function endpoint() {
   const portFile = path.join(profile, "DevToolsActivePort");
-  for (let i = 0; i < 100; i += 1) {
-    if (fs.existsSync(portFile)) {
+  for (let i = 0; i < 150; i += 1) {
+    // Edge holds DevToolsActivePort open exclusively while it starts, so both the
+    // existence check and the read can lose a race with it. Both throw here, and
+    // both mean "not ready yet" - which is what the loop is for. Treating an
+    // unreadable port file as fatal makes the audit fail intermittently for a
+    // reason that has nothing to do with the artwork.
+    try {
       const lines = fs.readFileSync(portFile, "utf8").split("\n");
       if (lines.length >= 2 && lines[0].trim()) {
         return `ws://127.0.0.1:${lines[0].trim()}${lines[1].trim()}`;
       }
+    } catch {
+      // locked or not written yet - keep polling
     }
     await new Promise((r) => setTimeout(r, 100));
   }
