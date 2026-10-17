@@ -48,6 +48,39 @@ const AUDIT = String.raw`
   const box = (el) => { try { return el.getBBox(); } catch (e) { return null; } };
   const area = (b) => b.width * b.height;
 
+  // getBBox() is in the element's OWN user space: it includes every descendant
+  // transform but NOT the element's own transform attribute. The purchased
+  // building wrappers carry their own translate(...) — a different one per
+  // plot, because each sits at a different grid position and ground height —
+  // so each raw getBBox() is offset from the scene by a different amount.
+  //
+  // Comparing those raw tops compares "how tall is this above its own anchor",
+  // which is not a comparison of position at all. It reported the castle as
+  // clearing the next-tallest roofline by 6px when in the rendered scene it
+  // clears it by 171px, and made check #1 fail against art that is correct.
+  // The village houses and sheds carry no transform of their own, so they were
+  // measured in scene space while the castle and the player's purchases were
+  // not — the two halves of the comparison did not share a coordinate system.
+  //
+  // rbox() maps a bbox through the element's full CTM into the SVG's root user
+  // space: the same space the viewBox, the grid inverse and every other
+  // measurement in this file already use.
+  const rootInv = svg.getScreenCTM().inverse();
+  const rbox = (el) => {
+    const b = box(el);
+    if (!b) return null;
+    const m = rootInv.multiply(el.getScreenCTM());
+    const corners = [
+      [b.x, b.y], [b.x + b.width, b.y],
+      [b.x + b.width, b.y + b.height], [b.x, b.y + b.height],
+    ].map(([x, y]) => ({ x: m.a * x + m.c * y + m.e, y: m.b * x + m.d * y + m.f }));
+    const xs = corners.map((p) => p.x);
+    const ys = corners.map((p) => p.y);
+    const x = Math.min.apply(null, xs);
+    const y = Math.min.apply(null, ys);
+    return { x, y, width: Math.max.apply(null, xs) - x, height: Math.max.apply(null, ys) - y };
+  };
+
   // --- integrity: nothing may be NaN, nothing may be clipped ----------------
   const attrs = ["points", "d", "cx", "cy", "x", "y", "r", "rx", "ry", "width", "height"];
   const nanShapes = [];
@@ -61,13 +94,17 @@ const AUDIT = String.raw`
   }
 
   // Content extent, ignoring the sky rect and anything inside a clip path.
+  // Measured in root space (rbox), not raw getBBox: every building, prop, tree
+  // and villager is drawn inside transform groups, and raw boxes for those land
+  // near the origin instead of where they are on the map. A union that mixes
+  // both spaces is not an extent.
   const sky = svg.querySelector("rect");
   const drawn = q("polygon, ellipse, circle, path, rect").filter(
     (e) => e !== sky && !e.closest("clipPath") && !e.closest("defs")
   );
   let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
   for (const el of drawn) {
-    const b = box(el);
+    const b = rbox(el);
     if (!b || (!b.width && !b.height)) continue;
     if (b.x < minX) minX = b.x;
     if (b.x + b.width > maxX) maxX = b.x + b.width;
@@ -128,17 +165,17 @@ const AUDIT = String.raw`
   const allBuildings = purchased.concat(houses, sheds, keeps);
   const castle = purchased.find((e) => /castle/i.test(e.getAttribute("data-id") || ""));
   const buildingBoxes = allBuildings
-    .map((e) => ({ e, b: box(e), id: e.getAttribute("data-id"), sub: e.getAttribute("data-subrole") }))
+    .map((e) => ({ e, b: rbox(e), id: e.getAttribute("data-id"), sub: e.getAttribute("data-subrole") }))
     .filter((o) => o.b);
   const areas = buildingBoxes.map((o) => area(o.b)).sort((a, b) => a - b);
   const medianArea = areas.length ? areas[Math.floor(areas.length / 2)] : 0;
-  const castleArea = castle ? area(box(castle)) : 0;
-  const castleTop = castle ? box(castle).y : Infinity;
+  const castleArea = castle ? area(rbox(castle)) : 0;
+  const castleTop = castle ? rbox(castle).y : Infinity;
   const tallestOther = allBuildings
     .filter((e) => e !== castle)
-    .reduce((m, e) => { const b = box(e); return b ? Math.min(m, b.y) : m; }, Infinity);
+    .reduce((m, e) => { const b = rbox(e); return b ? Math.min(m, b.y) : m; }, Infinity);
   // Where the castle sits vertically within the land, 0 = back, 1 = front.
-  const castleDepth = castle ? (box(castle).y + box(castle).height - minY) / Math.max(1, maxY - minY) : 1;
+  const castleDepth = castle ? (rbox(castle).y + rbox(castle).height - minY) / Math.max(1, maxY - minY) : 1;
 
   // ribbon() emits [ ...left, ...right.reversed() ], so the two edges are the
   // first and second halves, with the second read back to front.
@@ -253,6 +290,22 @@ const AUDIT = String.raw`
   }
 
   // --- 5. clustering: neighbourhoods, not even scatter ----------------------
+  // The statistic is Clark-Evans R: the observed mean nearest-neighbour
+  // distance divided by the mean expected for the same number of buildings
+  // spread at random over the same land. R < 1 means buildings bunch up, R = 1
+  // means no preference, R > 1 means they are being kept apart.
+  //
+  // It replaces a coefficient of variation over nearest-neighbour distances,
+  // which was measured on mixed coordinates (see rbox above) and which, once
+  // the coordinates were corrected, turned out not to measure clustering at
+  // all. A village of tight clumps gives every building a near-identical
+  // neighbour distance, so its variance collapses: three clumps scored 0.03,
+  // below the 0.0 the uniform grid it was meant to reject. That gate could not
+  // be passed by the layout it was written to accept.
+  //
+  // The frame is the whole drawn land, not the tight box around the buildings:
+  // empty ground between neighbourhoods is the evidence of clustering, so
+  // excluding it would delete the very thing being measured.
   const centresB = buildingBoxes.map((o) => ({ x: o.b.x + o.b.width / 2, y: o.b.y + o.b.height / 2 }));
   const nn = [];
   for (let i = 0; i < centresB.length; i += 1) {
@@ -264,7 +317,11 @@ const AUDIT = String.raw`
     if (isFinite(best)) nn.push(best);
   }
   const mean = nn.reduce((s, v) => s + v, 0) / Math.max(1, nn.length);
-  const sd = Math.sqrt(nn.reduce((s, v) => s + (v - mean) ** 2, 0) / Math.max(1, nn.length));
+
+  // Clark-Evans R, computed against the whole drawn land (see note above).
+  const frameArea = Math.max(1, (maxX - minX) * (maxY - minY));
+  const expectedNN = 0.5 * Math.sqrt(frameArea / Math.max(1, centresB.length));
+  const clarkEvans = expectedNN > 0 ? mean / expectedNN : 0;
   const pairs = [];
   for (let i = 0; i < centresB.length; i += 1) {
     for (let j = i + 1; j < centresB.length; j += 1) {
@@ -400,9 +457,9 @@ const AUDIT = String.raw`
       hasPlaza: !!plaza,
       buildingsWithin2Radius: centre
         ? allBuildings.filter((e) => {
-            const b = box(e);
-            const p = box(plaza);
-            return Math.hypot(b.x + b.width / 2 - (p.x + p.width / 2), b.y + b.height / 2 - (p.y + p.height / 2)) < 150;
+            const b = rbox(e);
+            const p = rbox(plaza);
+            return b && p && Math.hypot(b.x + b.width / 2 - (p.x + p.width / 2), b.y + b.height / 2 - (p.y + p.height / 2)) < 150;
           }).length
         : 0,
       roadsConverging: roadsNearCentre,
@@ -414,7 +471,8 @@ const AUDIT = String.raw`
     })),
     clustering: {
       meanNN: +mean.toFixed(1),
-      cv: +((sd / Math.max(1, mean)) || 0).toFixed(2),
+      expectedNN: +expectedNN.toFixed(1),
+      clarkEvans: +clarkEvans.toFixed(2),
       closePairs: closePairs,
       clustersOf3Plus: clusters,
     },
@@ -489,8 +547,8 @@ function buildChecks(r) {
       n: 5,
       q: "Are neighbourhoods distinct?",
       why: "buildings must cluster; even spacing reads as a board",
-      pass: r.clustering.cv >= 0.5 && r.clustering.clustersOf3Plus >= 2,
-      got: `spacing cv ${r.clustering.cv}, ${r.clustering.clustersOf3Plus} clusters, ${r.clustering.closePairs} close pairs`,
+      pass: r.clustering.clarkEvans < 1.0 && r.clustering.clustersOf3Plus >= 2,
+      got: `Clark-Evans R ${r.clustering.clarkEvans} (mean NN ${r.clustering.meanNN} vs random ${r.clustering.expectedNN}), ${r.clustering.clustersOf3Plus} clusters, ${r.clustering.closePairs} close pairs`,
     },
     {
       n: 6,
