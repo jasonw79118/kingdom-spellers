@@ -46,6 +46,8 @@ const MODELS = new Set(["eleven_flash_v2_5", "eleven_multilingual_v2", "eleven_t
 // input caps as well.
 const ALLOWED_ORIGINS = new Set([
   "https://jasonw79118.github.io",
+  "https://www.kingdomspellers.com",
+  "https://kingdomspellers.com",
   "http://localhost:3000",
   "http://localhost:3001",
   "http://127.0.0.1:3000",

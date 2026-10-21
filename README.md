@@ -17,7 +17,7 @@ npm install
 npm run dev
 ```
 
-Then open the printed URL (default <http://localhost:3000/kingdom-spellers/>).
+Then open the printed URL (default <http://localhost:3000/>).
 
 The app runs in **demo mode** out of the box — accounts and progress are
 stored in `localStorage`. Create a parent account, add a child player, and
@@ -32,12 +32,12 @@ npm run deploy    # publish build/ to the gh-pages branch
 ```
 
 The site is published from the root of the **`gh-pages`** branch, which GitHub
-serves at <https://jasonw79118.github.io/kingdom-spellers/>.
+serves at <https://www.kingdomspellers.com/>.
 
 Two settings make this work without any server configuration:
 
-- `base: "/kingdom-spellers/"` in `vite.config.js` so asset URLs resolve under
-  the project sub-path.
+- `base: "/"` in `vite.config.js` so asset URLs resolve under
+  the custom domain root. `public/CNAME` preserves `www.kingdomspellers.com` on deployment.
 - `HashRouter` instead of `BrowserRouter`, so deep links and page refreshes work
   on a static host that has no SPA fallback.
 
@@ -99,11 +99,11 @@ platforms. Without this the site loads but every Appwrite call fails with
 npm run setup:platforms
 ```
 
-By default this registers `jasonw79118.github.io` and `localhost`. Override
+By default this registers both custom domain hostnames, `jasonw79118.github.io`, and `localhost`. Override
 with a comma-separated list in `.env`:
 
 ```
-APPWRITE_HOSTNAMES=jasonw79118.github.io,localhost
+APPWRITE_HOSTNAMES=www.kingdomspellers.com,kingdomspellers.com,jasonw79118.github.io,localhost
 ```
 
 Add any other hostname you deploy to (e.g. a custom domain).
@@ -258,7 +258,7 @@ attempts, never just one. Incorrect words are weighted to reappear more often
 ### Routing
 
 The app uses `HashRouter` so it works when deployed to GitHub Pages
-(`https://jasonw79118.github.io/kingdom-spellers/`) without any server-side
+(`https://www.kingdomspellers.com/`) without any server-side
 SPA fallback configuration.
 
 ---

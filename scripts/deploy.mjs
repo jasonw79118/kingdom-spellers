@@ -3,10 +3,10 @@
 //   npm run build && npm run deploy
 //
 // The site is published from the root of the gh-pages branch, which GitHub
-// serves at https://<user>.github.io/<repo>/.
+// serves at https://www.kingdomspellers.com/.
 //
-// Vite's `base` is set to /kingdom-spellers/ in vite.config.js so asset URLs
-// resolve under that subpath, and the app uses HashRouter so deep links work
+// Vite's `base` is set to / in vite.config.js so asset URLs
+// resolve at the custom domain root, and the app uses HashRouter so deep links work
 // without any server-side SPA fallback.
 //
 // The existing branch history is preserved: this checks gh-pages out into a
@@ -86,4 +86,4 @@ try {
 }
 
 console.log("\nThe site will update at:");
-console.log("  https://jasonw79118.github.io/kingdom-spellers/\n");
+console.log("  https://www.kingdomspellers.com/\n");

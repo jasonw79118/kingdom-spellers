@@ -17,7 +17,7 @@ for (const line of readFileSync(".env", "utf8").split("\n")) {
   if (m) ENV[m[1]] = m[2].trim();
 }
 
-const HOSTNAMES = (ENV.APPWRITE_HOSTNAMES || "jasonw79118.github.io,localhost")
+const HOSTNAMES = (ENV.APPWRITE_HOSTNAMES || "www.kingdomspellers.com,kingdomspellers.com,jasonw79118.github.io,localhost")
   .split(",")
   .map((h) => h.trim())
   .filter(Boolean);
@@ -37,7 +37,7 @@ const scopeOf = (err) => {
 let existing = [];
 try {
   const res = await project.listPlatforms();
-  existing = (res.platforms || []).map((p) => p.name || p.hostname).filter(Boolean);
+  existing = (res.platforms || []).map((p) => p.hostname || p.name).filter(Boolean);
   console.log("existing platforms:", existing.length ? existing.join(", ") : "(none)");
 } catch (e) {
   console.error("Could not list platforms -> " + scopeOf(e));

@@ -35,12 +35,11 @@ function snapshotEndpoint() {
   };
 }
 
-// The app is deployed to GitHub Pages under a project subpath
-// (https://jasonw79118.github.io/kingdom-spellers/), so the build
-// base must match. Override with VITE_BASE if hosting elsewhere.
+// The custom domain serves the app at the root.
+// Override with VITE_BASE for a GitHub Pages project-subpath deployment.
 export default defineConfig({
   plugins: [react(), snapshotEndpoint()],
-  base: process.env.VITE_BASE || "/kingdom-spellers/",
+  base: process.env.VITE_BASE || "/",
   build: {
     outDir: "build",
     sourcemap: false,
