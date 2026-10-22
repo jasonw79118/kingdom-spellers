@@ -1,0 +1,60 @@
+{
+  "status": "balancing placeholders\u2014adapt to live ids/economy",
+  "currency": "example coins only",
+  "buildings": [
+    {
+      "id": "cottage",
+      "title": "Starter Cottage",
+      "referenceImage": "06_starter_cottage.png",
+      "exampleCost": 0,
+      "maxUpgradeLevel": 3,
+      "ownedByDefault": true,
+      "upgradeArtStatus": "new sprites needed"
+    },
+    {
+      "id": "academy",
+      "title": "Spelling Academy",
+      "referenceImage": "03_schoolhouse_spelling_academy.png",
+      "exampleCost": 125,
+      "maxUpgradeLevel": 3,
+      "ownedByDefault": false,
+      "upgradeArtStatus": "new sprites needed"
+    },
+    {
+      "id": "library",
+      "title": "Word Hall Library",
+      "referenceImage": "04_library_word_hall.png",
+      "exampleCost": 250,
+      "maxUpgradeLevel": 3,
+      "ownedByDefault": false,
+      "upgradeArtStatus": "new sprites needed"
+    },
+    {
+      "id": "market",
+      "title": "Marketplace",
+      "referenceImage": "05_marketplace_cluster.png",
+      "exampleCost": 325,
+      "maxUpgradeLevel": 3,
+      "ownedByDefault": false,
+      "upgradeArtStatus": "new sprites needed"
+    },
+    {
+      "id": "guild_hall",
+      "title": "Town Hall",
+      "referenceImage": "02_town_hall_guild_hall.png",
+      "exampleCost": 600,
+      "maxUpgradeLevel": 3,
+      "ownedByDefault": false,
+      "upgradeArtStatus": "new sprites needed"
+    },
+    {
+      "id": "tower",
+      "title": "Spell Tower",
+      "referenceImage": "07_spell_tower.png",
+      "exampleCost": 800,
+      "maxUpgradeLevel": 3,
+      "ownedByDefault": false,
+      "upgradeArtStatus": "new sprites needed"
+    }
+  ]
+}

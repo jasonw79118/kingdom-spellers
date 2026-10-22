@@ -1,0 +1,116 @@
+[
+  {
+    "source": "02_town_hall_guild_hall.png",
+    "size": [
+      1254,
+      1254
+    ],
+    "mode": "RGBA",
+    "alphaExtrema": [
+      0,
+      255
+    ],
+    "contentBounds": [
+      0,
+      12,
+      1227,
+      1254
+    ],
+    "webpBytes": 125134
+  },
+  {
+    "source": "03_schoolhouse_spelling_academy.png",
+    "size": [
+      1254,
+      1254
+    ],
+    "mode": "RGBA",
+    "alphaExtrema": [
+      0,
+      255
+    ],
+    "contentBounds": [
+      0,
+      0,
+      1245,
+      1254
+    ],
+    "webpBytes": 123460
+  },
+  {
+    "source": "04_library_word_hall.png",
+    "size": [
+      1254,
+      1254
+    ],
+    "mode": "RGBA",
+    "alphaExtrema": [
+      0,
+      255
+    ],
+    "contentBounds": [
+      0,
+      0,
+      1254,
+      1254
+    ],
+    "webpBytes": 145400
+  },
+  {
+    "source": "05_marketplace_cluster.png",
+    "size": [
+      1254,
+      1254
+    ],
+    "mode": "RGBA",
+    "alphaExtrema": [
+      0,
+      255
+    ],
+    "contentBounds": [
+      0,
+      9,
+      1240,
+      1254
+    ],
+    "webpBytes": 152602
+  },
+  {
+    "source": "06_starter_cottage.png",
+    "size": [
+      1254,
+      1254
+    ],
+    "mode": "RGBA",
+    "alphaExtrema": [
+      0,
+      255
+    ],
+    "contentBounds": [
+      0,
+      44,
+      1227,
+      1208
+    ],
+    "webpBytes": 105980
+  },
+  {
+    "source": "07_spell_tower.png",
+    "size": [
+      1254,
+      1254
+    ],
+    "mode": "RGBA",
+    "alphaExtrema": [
+      0,
+      255
+    ],
+    "contentBounds": [
+      0,
+      0,
+      1204,
+      1254
+    ],
+    "webpBytes": 127624
+  }
+]

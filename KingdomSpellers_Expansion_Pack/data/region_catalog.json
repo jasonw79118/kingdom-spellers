@@ -1,0 +1,40 @@
+{
+  "status": "design proposal\u2014not existing save schema",
+  "regions": [
+    {
+      "id": "greenwood",
+      "name": "Greenwood Village",
+      "biome": "forest",
+      "progressionMilestone": "starter",
+      "sceneArtStatus": "reference only"
+    },
+    {
+      "id": "suncrest",
+      "name": "Suncrest Plains",
+      "biome": "farmland",
+      "progressionMilestone": "region_2",
+      "sceneArtStatus": "reference only"
+    },
+    {
+      "id": "stonehelm",
+      "name": "Stonehelm Highlands",
+      "biome": "mountains",
+      "progressionMilestone": "region_3",
+      "sceneArtStatus": "reference only"
+    },
+    {
+      "id": "tidemoor",
+      "name": "Tidemoor Coast",
+      "biome": "coast",
+      "progressionMilestone": "region_4",
+      "sceneArtStatus": "reference only"
+    },
+    {
+      "id": "emberreach",
+      "name": "Emberreach",
+      "biome": "volcanic",
+      "progressionMilestone": "region_5",
+      "sceneArtStatus": "reference only"
+    }
+  ]
+}
