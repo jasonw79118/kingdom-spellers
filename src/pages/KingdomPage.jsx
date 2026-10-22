@@ -8,6 +8,8 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { backend } from "../lib/backend";
+import { performKingdomAction, expansionActionsAvailable } from "../lib/kingdomActions";
+import { EXPANSION_KEY } from "../game/expansion";
 import Avatar from "../components/Avatar";
 import ProgressBar from "../components/ProgressBar";
 import StatPill from "../components/StatPill";
@@ -154,6 +156,7 @@ export default function KingdomPage() {
 
   const [player, setPlayer] = useState(null);
   const [progress, setProgress] = useState(null);
+  const [mastery, setMastery] = useState([]);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const mutationLock = useRef(false);
@@ -176,14 +179,16 @@ export default function KingdomPage() {
     setLoading(true);
     setLoadError("");
     try {
-      const [profiles, prog] = await Promise.all([
+      const [profiles, prog, records] = await Promise.all([
         backend.profiles.list(),
         backend.progress.get(playerId),
+        backend.mastery.list(playerId).catch(() => []),
       ]);
       if (version !== loadVersion.current) return;
       const p = profiles.find((x) => x.id === playerId);
       setPlayer(p || null);
       setProgress(prog);
+      setMastery(records);
     } catch (err) {
       if (version === loadVersion.current) setLoadError("Your kingdom could not be loaded. Please try again.");
     } finally {
@@ -202,7 +207,7 @@ export default function KingdomPage() {
   const built = (() => {
     const raw = progress?.buildings || {};
     const out = {};
-    for (const id of Object.keys(raw)) out[id] = plotState(raw, id);
+    for (const id of Object.keys(raw)) out[id] = id === EXPANSION_KEY ? raw[id] : plotState(raw, id);
     return out;
   })();
 
@@ -303,7 +308,28 @@ export default function KingdomPage() {
     setProgress(updated);
   };
 
+  const applyExpansion = async (action) => {
+    if (mutationLock.current) return;
+    mutationLock.current = true;
+    setBusy(true);
+    try {
+      const result = await performKingdomAction(playerId, action);
+      setPlayer(current => ({ ...current, ...result.profile }));
+      setProgress(current => ({ ...current, ...result.progress }));
+      flash(result.message);
+      if (!result.replay && ["build", "upgrade", "quest"].includes(action.type)) {
+        setReward({kind:"build", title:result.message, subtitle:"A new chapter for your village", icon:"✧"});
+      }
+    } catch (error) {
+      flash(error.message || "Your village could not be saved. Refresh before trying again.");
+    } finally {
+      mutationLock.current = false;
+      setBusy(false);
+    }
+  };
+
   const build = async (building) => {
+    if (expansionActionsAvailable) return applyExpansion({type:"build",target:building.id});
     if (mutationLock.current) return;
     if (plotState(built, building.id) !== PLOT.CLEARED) {
       flash(`Clear the land first before building the ${building.name}.`);
@@ -368,6 +394,7 @@ export default function KingdomPage() {
 
   // Clear wild land so a structure can be built on it.
   const clearLand = async (building) => {
+    if (expansionActionsAvailable) return applyExpansion({type:"clear",target:building.id});
     if (mutationLock.current) return;
     if (plotState(built, building.id) !== PLOT.WILD) return;
     if (gold < building.clearCost) {
@@ -557,8 +584,11 @@ export default function KingdomPage() {
               </div>
             ) : kingdom.id === 1 ? (
               <GreenwoodVillage key={playerId} built={built} gold={gold} busy={busy} companion={player.avatar?.companion}
-                onClear={clearLand} onBuild={build}
-                onPractice={() => navigate(`/play?playerId=${encodeURIComponent(playerId)}`, { state: { playerId } })} />
+                onClear={clearLand} onBuild={build} mastery={mastery} expansionAvailable={expansionActionsAvailable}
+                onUpgrade={(building,level) => applyExpansion({type:"upgrade",target:building.id,level})}
+                onDecorate={(target) => applyExpansion({type:"decorate",target})}
+                onQuest={(target) => applyExpansion({type:"quest",target})}
+                onPractice={(mission) => navigate(`/play?playerId=${encodeURIComponent(playerId)}${mission ? `&mission=${encodeURIComponent(mission)}` : ""}`, { state: { playerId } })} />
             ) : (
               <>
                 <div style={{ position: "relative", marginTop: 14 }}>

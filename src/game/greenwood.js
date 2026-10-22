@@ -1,12 +1,12 @@
 // Presentation-only coordinates. Saved IDs and economy remain in game/kingdom.js.
 export const GREENWOOD_SITES = {
-  greenwoodcastle: { x: 615, y: 330, scale: 0.92 },
-  schoolhouse: { x: 850, y: 420, scale: 0.85 },
-  cottage: { x: 340, y: 465, scale: 0.88 },
-  townhall: { x: 610, y: 495, scale: 0.9 },
-  bakery: { x: 405, y: 625, scale: 0.95 },
-  well: { x: 720, y: 610, scale: 0.8 },
-  market: { x: 970, y: 575, scale: 0.95 },
+  greenwoodcastle: { x: 640, y: 360, width: 195, depth: 1 },
+  schoolhouse: { x: 970, y: 470, width: 220, depth: 2 },
+  townhall: { x: 425, y: 500, width: 210, depth: 3 },
+  cottage: { x: 220, y: 645, width: 190, depth: 4 },
+  well: { x: 765, y: 625, width: 120, depth: 5 },
+  bakery: { x: 520, y: 740, width: 215, depth: 6 },
+  market: { x: 1005, y: 735, width: 245, depth: 7 },
 };
 
 export const GREENWOOD_DESCRIPTIONS = {

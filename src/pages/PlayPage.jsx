@@ -6,6 +6,7 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useNavigate, useSearchParams, useLocation } from "react-router-dom";
 import { backend } from "../lib/backend";
+import { performKingdomAction, expansionActionsAvailable } from "../lib/kingdomActions";
 import Avatar from "../components/Avatar";
 import { buildPracticeSet, masteryLevel } from "../game/mastery";
 import { createSession, buildPuzzle, gradeAnswer, advanceSession, sessionSummary, MODES } from "../game/practice";
@@ -17,6 +18,9 @@ import { normalizeWord, shuffleArray } from "../lib/utils";
 export default function PlayPage() {
   const [searchParams] = useSearchParams();
   const playerId = searchParams.get("playerId");
+  const missionId = searchParams.get("mission") === "first-words" ? "first-words" : null;
+  const [missionResult, setMissionResult] = useState(null);
+  const missionAttempts = useRef([]);
   const location = useLocation();
   const navigate = useNavigate();
   const statePlayerId = playerId || location.state?.playerId;
@@ -79,7 +83,9 @@ export default function PlayPage() {
       for (const r of records) byWord[normalizeWord(r.word)] = r;
 
       const isTest = mode === "test";
-      const size = Math.min(isTest ? list.words.length : 10, list.words.length);
+      const size = Math.min(isTest ? list.words.length : missionId ? 5 : 10, list.words.length);
+      missionAttempts.current = [];
+      setMissionResult(null);
       const chosen = isTest
         ? shuffleArray(list.words)
         : buildPracticeSet(list.words, byWord, { size });
@@ -109,7 +115,7 @@ export default function PlayPage() {
     } finally {
       setLoading(false);
     }
-  }, [player, listId]);
+  }, [player, listId, missionId]);
 
   // --- answer interaction --------------------------------------------------
   const currentWord = session?.words[session.index];
@@ -172,6 +178,7 @@ export default function PlayPage() {
     const word = wordRef.current;
     const grade = gradeAnswer(word, finalAnswer);
     setFeedback(grade);
+    missionAttempts.current.push({word,correct:grade.correct});
 
     // Persist the attempt (this updates mastery server-side).
     try {
@@ -190,24 +197,17 @@ export default function PlayPage() {
         isTest,
       });
       const xp = isTest ? REWARDS.testXp : XP_PER_WORD;
-      if (gold > 0) {
-        setEarnedGold((g) => g + gold);
+      if (gold > 0 || xp > 0) {
         try {
-          await backend.profiles.update(player.id, {
-            coins: (player.coins || 0) + gold,
-          });
-        } catch (err) {
-          console.error(err);
-        }
-      }
-      if (xp > 0) {
-        setEarnedXp((x) => x + xp);
-        try {
-          const fresh = await backend.profiles.list();
-          const me = fresh.find((p) => p.id === player.id);
-          if (me) await backend.profiles.update(player.id, { xp: (me.xp || 0) + xp });
-        } catch (err) {
-          console.error(err);
+          const profiles = await backend.profiles.list();
+          const fresh = profiles.find(p => p.id === player.id);
+          if (!fresh) throw new Error("Player not found");
+          const saved = await backend.profiles.update(player.id, { coins: (fresh.coins || 0) + gold, xp: (fresh.xp || 0) + xp });
+          setPlayer(current => ({ ...current, ...saved }));
+          setEarnedGold(value => value + gold);
+          setEarnedXp(value => value + xp);
+        } catch (error) {
+          setMissionResult({error:"Practice was recorded, but rewards could not be confirmed. Refresh before continuing."});
         }
       }
       setReward(
@@ -217,13 +217,13 @@ export default function PlayPage() {
       );
     }
 
-    setTimeout(next, grade.correct ? 1100 : 1700);
+    setTimeout(() => next(grade), grade.correct ? 1100 : 1700);
   };
 
-  const next = async () => {
+  const next = async (completedGrade) => {
     const updated = advanceSession(session, {
       word: wordRef.current,
-      correct: feedback?.correct ?? false,
+      correct: completedGrade?.correct ?? false,
       guess: answerRef.current.join(""),
     });
 
@@ -241,6 +241,15 @@ export default function PlayPage() {
         } catch (err) {
           console.error(err);
         }
+      }
+      if (missionId && updated.mode !== "test") {
+        const correct = missionAttempts.current.filter(attempt => attempt.correct).length;
+        let message = correct ? "Your words are helping Greenwood grow." : "Every try is practice. Come back for another gentle quest.";
+        if (correct && expansionActionsAvailable) {
+          try { const outcome = await performKingdomAction(statePlayerId, {type:"quest",target:missionId}); message = outcome.replay ? "Your garden is already blooming. You kept your normal practice rewards." : "Quest complete! A flower garden is now growing in your village."; }
+          catch { message = "Practice completed. Return to your village to collect your garden when saving is available."; }
+        }
+        setMissionResult({correct,total:updated.total,message});
       }
       setSession(null);
       setPuzzle(null);
@@ -297,6 +306,13 @@ export default function PlayPage() {
           </button>
         </div>
 
+        {missionId && <section className="ks-mission-result" aria-label="Spelling mission" role="status">
+          <h2>{missionResult ? "Your Greenwood adventure" : "Words take root"}</h2>
+          <p>{missionResult?.message || "Choose a list for a quest of up to five words. Your first correct spelling can plant a village garden. You earn your normal gold and XP."}</p>
+          {missionResult && <p>{missionResult.correct || 0} of {missionResult.total || 0} spelled correctly · keep learning at your own pace.</p>}
+          {missionResult && <button type="button" className="btn btn-forest" onClick={() => navigate(`/kingdom/${player.id}`)}>See your village grow →</button>}
+        </section>}
+        {missionResult?.error && <p role="alert">{missionResult.error}</p>}
         <div className="card ks-row">
           <Avatar config={player.avatar} size={64} />
           <div className="ks-spread ks-grow">

@@ -20,7 +20,10 @@
     "test": "node scripts/verify-game.mjs",
     "dev:demo": "vite --mode demo",
     "test:greenwood": "node scripts/verify-greenwood.mjs",
-    "verify:release": "node scripts/verify-release.mjs"
+    "verify:release": "node scripts/verify-release.mjs",
+    "test:expansion": "node --test scripts/expansion.test.mjs",
+    "test:expansion:browser": "node scripts/verify-expansion-browser.mjs",
+    "package:kingdom": "node scripts/package-kingdom-function.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.57.0",

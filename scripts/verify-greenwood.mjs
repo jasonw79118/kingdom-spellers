@@ -67,7 +67,7 @@ try {
   await page.reload({waitUntil:'domcontentloaded'});await page.locator('.gw').waitFor();
   check('Purchase survives reload',await page.locator('[data-art-id="cottage"]').getAttribute('data-art-state')==='built');
   await page.locator('.gw-site').filter({hasText:'Wooden Cottage'}).click();
-  check('Owned plot cannot charge again',await page.locator('.gw-detail .gw-primary').count()===0);
+  check('Owned plot cannot charge again',await page.locator('.gw-detail .gw-primary:not(.gw-upgrade)').count()===0);
   await page.getByRole('button',{name:'Zoom in',exact:true}).click();
   check('Zoom control works',await page.getByRole('status',{name:'Map zoom'}).innerText()==='125%');
   await page.getByRole('button',{name:'Reset map view'}).click();

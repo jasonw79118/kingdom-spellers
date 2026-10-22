@@ -1,0 +1,49 @@
+.gw-storybook .gw-layout{display:block;border:1px solid #b3ad83;box-shadow:0 12px 36px #233e3022}
+.gw-storybook .gw-world{background:#577c43;display:block}.gw-storybook .gw-world-bar{background:#183e32;color:#fff1cc;padding:13px 18px}.gw-storybook .gw-world-bar i{background:#e0bd6b}
+.gw-storybook .gw-viewport{height:clamp(480px,57vw,650px);max-height:650px;background:#7b9a51;overscroll-behavior:contain;touch-action:pan-x pan-y}
+.gw-storybook .gw-canvas{aspect-ratio:1280/780;min-height:0}.ks-story-scene{position:absolute;inset:0;isolation:isolate;overflow:hidden}
+.ks-story-terrain{width:100%;height:100%;object-fit:fill;position:absolute;inset:0;user-select:none;pointer-events:none}
+.ks-scene-paths{position:absolute;width:100%;height:100%;inset:0;pointer-events:none;z-index:1}
+.ks-scene-slot{position:absolute;aspect-ratio:1;transform:translate(-50%,-100%);overflow:visible;pointer-events:none}
+.ks-owned-art{position:absolute;inset:0;pointer-events:none;filter:drop-shadow(3px 6px 4px #172b2830)}
+.ks-owned-art>img{width:100%;height:100%;object-fit:contain;position:relative;z-index:1;display:block;pointer-events:none}
+.ks-contact-shadow{position:absolute;width:85%;height:13%;background:#223b2b65;filter:blur(5px);border-radius:50%;bottom:0;left:10%;transform:rotate(-6deg)}
+.ks-scene-hit>.gw-lot{position:absolute;inset:0;transform:none;height:calc(100% + 29px);width:100%;align-items:flex-end;justify-content:center;pointer-events:auto;font-size:11px;padding:0;gap:4px}
+.ks-scene-hit>.gw-lot>span:last-child{max-width:none;background:#fff2d7f5;border:1px solid #c8a869;padding:5px 8px;box-shadow:0 2px 6px #16372d44;text-align:center;min-height:32px;display:flex;flex-direction:column;justify-content:center}
+.ks-scene-hit>.gw-lot small{font-size:9px;line-height:1.2;color:#4d694d}.ks-scene-hit.is-selected .gw-lot>span:last-child{background:#224f3d;color:#fff3d6;outline:2px solid #ecc678}.ks-scene-hit.is-selected .gw-lot small{color:#f5dfae}
+.ks-scene-hit>.gw-lot:focus-visible{outline:3px solid #fff2a1;outline-offset:5px;border-radius:25px}.ks-scene-slot.is-owned:hover .ks-owned-art{filter:drop-shadow(0 0 7px #ffe5a6)}
+.ks-scene-slot.is-empty{aspect-ratio:auto;height:65px}.ks-construction-site{width:75%;height:35px;border:2px dashed #e5d3a1;border-radius:50%;background:#73563a45;position:absolute;bottom:4px;left:12%;transform:rotate(-9deg);box-shadow:0 3px 4px #243e232b}
+.ks-construction-site>span{position:absolute;left:42%;top:-33px;width:29px;height:28px;border:2px solid #b69359;background:#f1ddb0;color:#4b694b;font-size:22px;border-radius:4px;transform:rotate(9deg);text-align:center;line-height:23px}.ks-construction-site>span:after{content:'';height:14px;width:3px;position:absolute;background:#8b6a44;top:24px;left:12px}
+.ks-construction-site i{position:absolute;bottom:0;left:10%;width:5px;height:16px;background:#b39a66;transform:rotate(9deg)}.ks-construction-site i:last-child{left:85%}.ks-construction-site.is-cleared{background:#ad89585e;box-shadow:inset 0 2px 8px #60452c44}.ks-construction-site.is-cleared:after{content:'';position:absolute;width:40%;height:5px;background:#d9b67c;top:12px;left:25%;box-shadow:8px 8px #b98b50;transform:rotate(-15deg)}
+.ks-start-camp{position:absolute;left:10%;top:50%;width:9%;z-index:390;transform:translate(-50%,-90%);text-align:center}.ks-start-camp img{width:100%;height:auto;display:block}.ks-start-camp small{font-size:9px;color:#fff3d6;text-shadow:0 1px 3px #173d27;background:#2d4f34ac;padding:3px 5px;border-radius:5px;white-space:nowrap}
+.ks-companion-marker{position:absolute;left:15%;top:53%;z-index:430;color:#faf4cd;background:#315b3c9c;border-radius:50%;padding:5px}
+.ks-decoration{position:absolute;pointer-events:none;z-index:740;transform:translate(-50%,-100%)}.ks-decoration img{width:100%;height:auto;display:block;filter:drop-shadow(2px 4px 2px #31562c55)}
+.ks-decor-word-garden{left:35%;top:88%;width:12%}.ks-decor-flower-border{left:15%;top:87%;width:10%}.ks-decor-home-banner{left:26%;top:84%;width:6%}.ks-decor-village-banners{left:44%;top:69%;width:6%}.ks-decor-school-lanterns{left:84%;top:62%;width:7%}
+.ks-scene-vignette{position:absolute;inset:0;pointer-events:none;z-index:900;box-shadow:inset 0 0 70px #14352238}
+.ks-level-garden{position:absolute;bottom:-3px;left:-4%;width:45%;z-index:2}.ks-level-garden img{width:100%;height:auto}.ks-level-flags{position:absolute;bottom:0;right:-5%;width:30%;z-index:2}.ks-level-flags svg{width:100%;height:auto;filter:drop-shadow(2px 3px 1px #1d40244f)}
+.gw-storybook .gw-detail{border:0;border-top:1px solid #cdc39b;background:#fff4d9;padding:25px 28px}.gw-storybook .gw-detail.has-selection{display:grid;grid-template-columns:170px minmax(0,1fr) 250px;gap:26px;align-items:start}
+.gw-storybook .gw-preview{height:auto;min-height:160px;float:none;width:auto;margin:0;background:radial-gradient(ellipse at 50% 80%,#dfdbac,transparent 68%)}.gw-storybook .gw-preview>img{display:block;width:100%;height:170px;object-fit:contain}.gw-storybook .gw-preview>span{display:block;margin-top:6px;line-height:1.5}
+.gw-storybook .gw-detail h3{margin:5px 0 10px;font-size:1.5rem}.gw-storybook .gw-detail p{margin-bottom:12px}.gw-storybook .gw-detail dl{font-size:.75rem;margin:15px 0 0;padding-bottom:0;border-bottom:0}.ks-building-actions{padding-top:4px}.gw-storybook .gw-upgrade{font-size:.76rem}.gw-storybook .gw-detail .gw-requirement{font-size:.75rem}
+.ks-welcome{display:flex;align-items:center;gap:30px;justify-content:space-between}.ks-welcome>div{max-width:650px}.ks-welcome .gw-primary{width:260px;flex-shrink:0}.ks-welcome h3{font-family:Georgia,serif}
+.ks-mission-journal{margin-top:30px;border-top:1px solid #d4d0ad;padding-top:25px}.ks-mission-journal>header h3,.ks-decor-shop>h3{font:normal 1.7rem Georgia,serif;margin:7px 0;color:#294e3a}.ks-mission-journal>header p{font-size:.85rem;color:#64755a;margin:7px 0 18px}
+.ks-mission-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}.ks-mission-grid article{padding:20px;background:#fff6e2;border:1px solid #d4c9a7;border-radius:14px;display:flex;flex-direction:column;align-items:flex-start}.ks-mission-grid article.is-complete{background:#e9eddb;border-color:#aabd91}.ks-mission-grid h4{font-size:1.1rem;margin:10px 0;color:#334d38}.ks-mission-grid p{font-size:.8rem;line-height:1.6;color:#687356;flex:1}.ks-mission-grid small{font-size:.72rem;color:#876831;margin-bottom:14px}.ks-quest-symbol{border:1px solid #c1ba8f;border-radius:50%;height:35px;width:35px;display:grid;place-items:center;color:#5c784e;font-size:21px}.ks-quest-done{font-size:.75rem;color:#427048;padding:12px 0}
+.ks-decor-shop{margin-top:25px}.ks-decor-shop>div{display:grid;grid-template-columns:1fr 1fr;gap:12px}.ks-decor-shop article{padding:18px;background:#f2efd9;border:1px solid #d4cfad;border-radius:12px}.ks-decor-shop h4{font-size:1rem;margin-bottom:6px}.ks-decor-shop p{font-size:.78rem;color:#627456}.ks-decor-shop button:disabled{opacity:.6;cursor:default}
+.ks-mission-result{border:1px solid #a6bb8d;background:#eef1dd;border-radius:16px;padding:22px}.ks-mission-result h2{font:normal 1.6rem Georgia,serif;color:#31583d}.ks-mission-result p{font-size:.9rem;color:#596e50}
+.ks-art-fallback{position:absolute;bottom:8px;padding:8px;border:1px dashed #c9ba8c;border-radius:10px;background:#f7ecd2;color:#335a3d;font-size:11px}
+@media(min-width:1500px){.gw-storybook .gw-viewport{height:650px}}
+@media(max-width:1000px){.gw-storybook .gw-detail.has-selection{grid-template-columns:140px minmax(0,1fr)}.ks-building-actions{grid-column:1/-1;display:flex;flex-direction:column;max-width:600px;width:100%;margin:auto}.ks-welcome{align-items:flex-start}.ks-welcome .gw-primary{width:210px}.ks-mission-grid{gap:8px}.ks-mission-grid article{padding:16px}}
+@media(max-width:720px){.gw-storybook .gw-viewport{height:480px;max-height:480px}.gw-storybook .gw-world-bar>span:last-child{display:none}.gw-storybook .gw-detail{padding:20px}.gw-storybook .gw-detail.has-selection{grid-template-columns:100px minmax(0,1fr);gap:15px}.gw-storybook .gw-preview>img{height:125px}.gw-storybook .gw-detail h3{font-size:1.3rem}.gw-storybook .gw-detail p{font-size:.79rem}.ks-welcome{display:block}.ks-welcome .gw-primary{width:100%;margin-top:18px}.ks-mission-grid{grid-template-columns:1fr}.ks-decor-shop>div{grid-template-columns:1fr}.ks-mission-grid article{padding:20px}.gw-storybook .gw-intro h2{font-size:1.7rem}}
+@media(prefers-reduced-motion:reduce){.ks-story-scene *{animation:none!important;transition:none!important}.ks-owned-art{filter:none}}
+
+/* Keep the entire default canvas in view on desktop; mobile remains pannable. */
+@media(min-width:721px){.gw-storybook .gw-viewport{height:660px;max-height:660px}}
+.ks-owned-art>img{object-position:center bottom}
+
+/* Interaction and text are above decorative art, independent of sprite depth. */
+.ks-scene-labels{position:absolute;inset:0;z-index:1000;pointer-events:none}
+.ks-scene-hit{position:absolute;aspect-ratio:1;transform:translate(-50%,-100%);pointer-events:none}
+.ks-scene-hit.is-empty{aspect-ratio:auto;height:65px}
+.ks-scene-slot.is-selected .ks-owned-art{filter:drop-shadow(0 0 7px #ffe5a6)}
+
+/* Decorative ground anchors follow the same back-to-front order as buildings. */
+.ks-decor-word-garden{z-index:686}.ks-decor-flower-border{z-index:679}.ks-decor-home-banner{z-index:655}.ks-decor-village-banners{z-index:538}.ks-decor-school-lanterns{z-index:484}

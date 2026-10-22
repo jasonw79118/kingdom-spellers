@@ -399,7 +399,7 @@ img {
     rgba(45, 33, 68, 0.55) 0%,
     rgba(24, 18, 38, 0.88) 70%
   );
-  animation: ks-cel-fade-out forwards;
+  animation: none;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
 }
