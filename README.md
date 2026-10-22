@@ -512,3 +512,58 @@ between those writes require a trusted transactional backend endpoint for a
 server-atomic guarantee. Stage one guards rapid actions in the current page;
 it does not claim to solve that existing backend limitation. Sprints two and
 three remain future work. This upgrade has not been deployed.
+
+
+## Painted expansion milestone ? 2026-10-22
+
+This supersedes the earlier SVG Greenwood vertical slice. Greenwood now uses
+the expansion pack's individual painted buildings, an empty generated meadow,
+separate construction sites, contact shadows, click targets and earned decor.
+Original saved building/region IDs, prices, ranks, lists and profiles remain.
+Saved optional upgrades have three levels; the cottage gains a structural wing,
+and other upgrades add gardens/royal surroundings. No fake library/tower IDs or
+extra mandatory buildings were added to existing completed regions.
+
+Three quests and two optional decorations are implemented. A spelling mission
+uses up to five words from the child's saved list and the existing learning
+rules. It can plant a once-only garden without adding a repeatable coin bonus.
+Multi-word coin/XP accumulation and stale feedback advancement are corrected.
+New progress is additive metadata inside the existing buildings JSON, with
+legacy booleans preserved. Existing backend adapters and schemas are unchanged.
+
+Full decisions, sources, changed files, evidence and release limits:
+[expansion implementation record](KingdomSpellers_Expansion_Pack/IMPLEMENTATION_STATUS.md).
+Supplied/generated art sources and exact built-in generation prompt templates:
+[art provenance](KingdomSpellers_Expansion_Pack/ART_PROVENANCE.md).
+
+```powershell
+npm run dev:demo -- --host 127.0.0.1 --port 3110 --strictPort
+npm test
+npm run test:expansion
+npm run build
+npm run build -- --base=/kingdom-spellers/ --outDir .snap/project-build
+npm run verify:release
+npm run package:kingdom
+```
+
+Optional browser validation uses Playwright and Microsoft Edge as described
+above. Set `QA_URL=http://127.0.0.1:3110`, then run `npm run test:expansion:browser`
+and `npm run test:greenwood`. Results: 56 existing game checks, 21 new rule and
+contract checks, 31 existing browser checks and 36 expansion browser checks pass.
+[Review screenshots](qa/expansion-evidence/07-quest-garden-in-world.png).
+
+The new loop is fully playable in demo. The authenticated, transactional
+Appwrite function is implemented in `server/` and packaged for review only in
+`.snap/kingdom-function-review/`. It is **not deployed**. New cloud upgrade,
+decoration and quest-claim actions require an approved function ID in the public
+`VITE_KINGDOM_FUNCTION_ID` build setting; no admin key belongs in `VITE_` values.
+The function independently verifies JWT/parent ownership and canonical costs.
+Its transaction behavior has offline contract tests, not live cloud validation.
+
+Existing cloud clear/build behavior remains available until that function is
+approved/configured. Its inherited direct-write permissions and the existing
+practice reward trust model still require an owner-reviewed hardening plan;
+do not represent the undeployed function as a secured production economy.
+Real-account, cross-device, audio/camera and deployment checks remain release
+gates. No cloud changes or deployment were made. Other regions remain the
+original working regions pending Greenwood visual acceptance.

@@ -1,97 +1,50 @@
-KINGDOM SPELLERS | GREENWOOD STAGE 1 | 2026-10-21
+KINGDOM SPELLERS | PAINTED GREENWOOD EXPANSION | 2026-10-22-a
 
-Implemented locally on feature/greenwood-storybook. Not deployed.
-Baseline commit: 579b543. Original src/lib/localBackend.js edit is preserved,
-excluded from upgrade commits, and backed up with the original working diff in
-.snap/upgrade-baseline/. The supplied design pack is preserved.
+Implemented on feature/greenwood-storybook. Not deployed. No database migration,
+production permission change, account reset, or live child-data write.
+The original uncommitted src/lib/localBackend.js edit remains intact and
+excluded from upgrade commits; its baseline copy is .snap/expansion-baseline/.
 
-SPRINT 0
-Production runtime selects Appwrite (observed before switching the test server
-to demo mode). Demo browser checks explicitly assert backendMode === demo.
-HashRouter, CNAME, deployment script, backend selection, database schema and
-cloud credentials remain intact. Vite now reads VITE_BASE from its mode env
-as well as supporting the existing process/CLI override.
-Root build and project-path build both pass generated JS/CSS link checks.
-build/CNAME is www.kingdomspellers.com. One configured private admin value was
-checked against every production file and was absent; values were not logged.
-Earlier domain audit: www serves HTTPS; apex redirects to www; old project
-asset paths were fixed and deployed in the preceding domain task.
+Delivered: supplied painted building sprites; empty painted terrain; separate
+interactive construction/owned states; purchased upgrades through level 3;
+three quests; two decor buys; a parent-word spelling mission with a persistent
+once-only garden; saved metadata, pan/zoom, accessibility and fallback assets.
+The renderer accepts region/slot/asset inputs; typed contracts cover canonical
+buildings, regions, ranks, levels, unlocks, cosmetics, quests and reward sources.
+Four other regions retain their working original scenes and canonical IDs.
 
-SPRINT 1
-Greenwood alone uses new original, independently composed SVG landscape,
-building, plot and decoration layers. Initial world has one shabby shelter
-and seven unbuilt plots. Only saved purchases render full map structures.
-The selected-plot preview is explicitly labeled as a future building.
-All seven IDs, clear/build prices, prosperity and legacy boolean saves reuse
-src/game/kingdom.js and existing backend actions. No parallel progression.
-Map controls: swipe/scroll, left/right buttons, focused arrow keys, zoom and
-reset; semantic 44px+ plot targets and a complete keyboard-accessible journal.
-Practice links carry the child ID. Fixed incorrect useSearchParams handling
-and the completed Royal Test counter's resolved child ID. Learning/reward
-rules, OCR and parent definition review were not changed.
-Purchase actions have a synchronous same-page lock. Loading failures offer
-retry; stale loading responses are ignored. Rank reference follows the world.
-Version stamp is bottom-left. New scene has no continuous animation; existing
-celebrations honor reduced motion and the scene's sparkles are suppressed.
-Other territories retain their existing artwork and behavior.
+Shared rules and adapters: src/game/expansion.js, src/game/kingdomContent.d.ts,
+src/lib/kingdomActions.js, server/kingdom-service.mjs and kingdom-function.mjs.
+Other changed paths and every design/economy/persistence decision:
+KingdomSpellers_Expansion_Pack/IMPLEMENTATION_STATUS.md.
+Artwork source paths, final project assets and exact built-in generation prompts:
+KingdomSpellers_Expansion_Pack/ART_PROVENANCE.md.
 
-IMPLEMENTATION FILES
-src/game/greenwood.js
-src/components/kingdom/GreenwoodArt.jsx
-src/components/kingdom/GreenwoodVillage.jsx
-src/components/kingdom/GreenwoodVillage.css
-src/pages/KingdomPage.jsx
-src/pages/PlayPage.jsx
-src/components/Layout.jsx
-vite.config.js, package.json, .env.demo
-scripts/verify-greenwood.mjs
-scripts/verify-release.mjs
-README.md, handoff.txt, qa/STAGE_1_REVIEW.md, qa/evidence/*
+Tests: 56 core + 21 expansion/contract + 31 regression browser + 36 expansion
+browser checks pass. Root/project-path builds, asset links, CNAME and private
+value bundle checks pass. No lint script. Existing large-bundle warning remains.
+Screenshot evidence: qa/expansion-evidence/. Browser writes used synthetic,
+isolated demo profiles; cloud transaction tests used an injected fake service.
 
-VALIDATION
-Baseline: npm test => 56 passed; npm run build => passed.
-After integration: npm test => 56 passed; npm run build => passed.
-npm run build -- --base=/kingdom-spellers/ --outDir .snap/project-build => passed.
-node scripts/verify-release.mjs => root/project asset links, CNAME and private
-value bundle check passed. No lint command is defined by the project.
-node scripts/verify-greenwood.mjs => 31 real-browser checks passed.
-375/768/1440: no horizontal page overflow; plot targets at least 44px.
-Verified zero purchased art at start, clearing once on rapid repeated click,
-original build price, reload persistence, owned-plot protection, pan/zoom,
-legacy saves, separate child state, insufficient gold, correct practice list,
-actual spelling gold/XP, zero-reward Royal Test, completed-test child mapping,
-load-failure retry, seven-building composition and zero uncaught page errors.
-Browser: headless Microsoft Edge, reduced motion, isolated synthetic demo
-storage. External requests blocked; cloud login was not automated.
-Before/after PNGs and machine-readable results: qa/evidence/.
-Scene-only crops hide fixed app chrome for unobstructed art inspection;
-full-page images include the actual app chrome. No mock rendering.
+Local preview: npm run dev:demo -- --host 127.0.0.1 --port 3110 --strictPort
+URL: http://127.0.0.1:3110/ (separate local demo data; create disposable profiles).
+Node tests: npm test; npm run test:expansion.
+Optional Playwright: npm run test:expansion:browser, npm run test:greenwood,
+with QA_URL=http://127.0.0.1:3110 and Playwright installed or PLAYWRIGHT_MODULE
+pointing to an existing installation. See README for exact commands.
 
-LOCAL REVIEW
-Local preview: npm run dev:demo -- --host 127.0.0.1 --port 3100
-URL: http://127.0.0.1:3100/ (credential-free .env.demo).
-Open the demo locally, create a disposable parent and child, then enter that
-child's kingdom. Test accounts are not embedded in app source or .env.
-Browser test runner seeds synthetic fixtures only in its isolated context.
-Optional Playwright installation and repeatable commands are in README.
+Review-only function package: npm run package:kingdom.
+Output .snap/kingdom-function-review, entry server/kingdom-function.mjs.
+Only allowlisted source and package metadata; no .env, credentials or child data.
+Requires explicit owner approval before any function installation/deployment,
+permission hardening, real-account staging tests or website release.
+Until approved/configured, existing cloud clear/build behavior is preserved;
+new cloud expansion spending/claims fail closed. The complete new loop is
+playable locally. Existing client-write/reward trust assumptions remain a
+production-hardening gate, not a solved server-authority claim.
 
-RELEASE GATE / KNOWN LIMITS
-Real Appwrite parent login/logout, two existing child profiles, cross-device
-refresh/sync, existing historical mastery and purchases still require an
-owner-controlled authenticated session. No live child data was inspected or
-modified. Recheck OCR/photo approval and parent definition editing manually.
-Cloud database and collection permissions were not modified or independently
-proven by these demo tests. Supabase was not exercised.
-The inherited coin update + progress save is not a cross-document server
-transaction. Same-page duplicate actions are guarded and tested; simultaneous
-tabs/devices or a network failure between those writes remain a backend risk.
-Do not claim this is server-atomic; address with a trusted transactional
-purchase endpoint before promising cross-device purchase guarantees.
-The existing >500 kB bundle warning remains (main bundle ~722 kB uncompressed).
-Fonts were blocked during browser QA; installed fallback fonts are shown.
-Physical touch-device audio and camera permission flows need manual review.
-Sprints 2/3 additions (new modalities, region map, parental gate, cosmetics)
-are outside this stage. Existing functionality is preserved.
-Owner visual and cloud-data review precedes release; do not extrapolate art
-to the other territories before that review. Production remains unchanged by
-this upgrade at https://www.kingdomspellers.com/.
+Manual release gates: owner visual acceptance; actual parent login/logout;
+existing children/history/mastery; cross-device saves; function invocation and
+conflict handling; permissions; physical device audio/camera/OCR review.
+No new regions, destructive migrations or deployment before approval.
+Production stays https://www.kingdomspellers.com/ on its previously published build.

@@ -31,8 +31,8 @@ try{
    if(localStorage.getItem('ks2_session'))return;
    localStorage.setItem('ks2_users',JSON.stringify([{id:'pack-parent',name:'Local art review'}]));
    localStorage.setItem('ks2_session',JSON.stringify({userId:'pack-parent'}));
-   localStorage.setItem('ks2_player_profiles',JSON.stringify([{id:'pack-child',parent_id:'pack-parent',name:'Woodland explorer',avatar:{base:'boy'},grade_level:1,difficulty:'medium',coins:2000,xp:0},{id:'other-child',parent_id:'pack-parent',name:'Other explorer',avatar:{base:'girl'},grade_level:2,difficulty:'medium',coins:88,xp:99}]));
-   localStorage.setItem('ks2_player_progress',JSON.stringify([{player_id:'pack-child',buildings:{},unlocked_kingdoms:[1],current_kingdom:1,royal_tests_completed:2},{player_id:'other-child',buildings:{well:true},unlocked_kingdoms:[1]}]));
+   localStorage.setItem('ks2_player_profiles',JSON.stringify([{id:'pack-child',parent_id:'pack-parent',name:'Woodland explorer',avatar:{base:'boy'},grade_level:1,difficulty:'medium',coins:0,xp:0},{id:'other-child',parent_id:'pack-parent',name:'Other explorer',avatar:{base:'girl'},grade_level:2,difficulty:'medium',coins:88,xp:99}]));
+   localStorage.setItem('ks2_player_progress',JSON.stringify([{player_id:'pack-child',buildings:{},unlocked_kingdoms:[1],current_kingdom:1,royal_tests_completed:0},{player_id:'other-child',buildings:{well:true},unlocked_kingdoms:[1]}]));
    localStorage.setItem('ks2_spelling_lists',JSON.stringify([{id:'pack-words',player_id:'pack-child',parent_id:'pack-parent',title:'Woodland words',created_at:'2026-10-22'}]));
    localStorage.setItem('ks2_spelling_words',JSON.stringify(['cat','dog','sun'].map((word,i)=>({id:'pack-word-'+i,list_id:'pack-words',word,normalized_word:word,position:i}))));
  });
@@ -41,7 +41,7 @@ try{
  page.on('response',r=>{if(r.url().includes('/assets/kingdom/')&&r.status()>=400)assetFailures.push({url:r.url(),status:r.status()});});
  await open();
  check('Actual test runtime is demo',await page.evaluate(async()=>(await import('/src/lib/backend.js')).backendMode==='demo'));
- check('New world has no unearned buildings',await page.locator('[data-art-state="built"]').count()===0);
+ check('Fresh profile has zero coins, tests and unearned buildings',await page.locator('[data-art-state="built"]').count()===0&&(await stored('player_profiles'))[0].coins===0&&(await stored('player_progress'))[0].royal_tests_completed===0);
  check('Painted terrain is a loaded project asset',await page.locator('.ks-story-terrain').evaluate(el=>el.complete&&el.naturalWidth>1000));
  check('Starter camp is separate from purchased cottage',await page.locator('[data-role="starter-shelter"] img').count()===1);
  await capture('01-fresh-meadow-desktop');
@@ -51,6 +51,9 @@ try{
    check(`Map targets at least 44px at ${width}px`,await page.locator('.gw-lot').evaluateAll(els=>els.every(el=>{const r=el.getBoundingClientRect();return r.width>=44&&r.height>=44;})));
    if(width!==1440)await capture(`02-fresh-${width}`);
  }
+ // Credit only the isolated fixture after recording the genuine zero-balance start.
+ await page.evaluate(()=>{const profiles=JSON.parse(localStorage.getItem('ks2_player_profiles'));profiles[0].coins=2000;localStorage.setItem('ks2_player_profiles',JSON.stringify(profiles));});
+ await page.reload({waitUntil:'domcontentloaded'});await page.locator('.gw').waitFor();
  await choose('Wooden Cottage');
  await page.getByRole('button',{name:'Clear plot · 10 gold',exact:true}).evaluate(el=>{el.click();el.click();});
  await page.waitForFunction(()=>JSON.parse(localStorage.getItem('ks2_player_progress'))[0].buildings.cottage==='cleared');
