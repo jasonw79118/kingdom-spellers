@@ -1,0 +1,12 @@
+/* Optional reference tokens: agent must integrate with existing CSS architecture. */
+:root {
+  --ks-forest:#2c654d; --ks-leaf:#8db565; --ks-parchment:#fff3d6;
+  --ks-sky:#c6e3dd; --ks-roof:#b95f45; --ks-stone:#d8bd8f;
+  --ks-ink:#26332d; --ks-gold:#e7b952;
+  --ks-radius-card:20px; --ks-radius-button:14px;
+  --ks-shadow-scene:0 16px 36px rgba(26,58,41,.16);
+  --ks-focus:3px solid #254fdb;
+}
+.ks-nextlevel-button { min-width:44px; min-height:44px; border-radius:var(--ks-radius-button); }
+.ks-nextlevel-button:focus-visible { outline:var(--ks-focus); outline-offset:3px; }
+@media (prefers-reduced-motion: reduce) { .ks-nextlevel-animation { animation:none!important;transition:none!important; } }

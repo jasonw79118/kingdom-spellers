@@ -436,3 +436,79 @@ thresholds, rank maths, and the gold economy).
 - **Web Speech API** (text-to-speech)
 - **Tesseract.js** (on-device OCR)
 - Custom SVG design system (no UI framework)
+
+
+## Greenwood storybook upgrade ? 2026-10-21
+
+Stage one is integrated into the existing child kingdom route. Greenwood uses
+original layered SVG scenery, seven independently rendered purchased buildings,
+semantic plot selection, an actual-price detail panel, a village journal, map
+pan/zoom, and links into the same child's spelling practice. Initial land has
+one modest starter shelter and empty plots. Other territories retain their
+existing scenes. Saved IDs, costs, XP, mastery, ranks and backend schema are
+unchanged. A synchronous purchase lock prevents duplicate same-page actions;
+failed kingdom loads offer retry. The version stamp is bottom-left.
+
+Implementation: `src/game/greenwood.js`, `GreenwoodArt.jsx`,
+`GreenwoodVillage.jsx` and `GreenwoodVillage.css` under
+`src/components/kingdom/`, integration in `KingdomPage.jsx`, corrected child-ID
+handling in `PlayPage.jsx`, stamp in `Layout.jsx`, and Vite env-base handling.
+Full evidence, changed-file list and release limits: `handoff.txt` and
+[stage-one review](qa/STAGE_1_REVIEW.md).
+
+### Local preview and verification
+
+```powershell
+npm run dev:demo -- --host 127.0.0.1 --port 3100
+```
+
+This uses the committed, credential-free `.env.demo` to select localStorage.
+Create disposable demo profiles to explore it; production Appwrite accounts
+are separate. Environment variables supplied by your shell can override mode
+files. The browser test refuses to proceed unless runtime selection is demo.
+
+In another terminal, run the core tests and builds:
+
+```powershell
+npm test
+npm run build
+npm run build -- --base=/kingdom-spellers/ --outDir .snap/project-build
+npm run verify:release
+```
+
+Vite loads `VITE_BASE` from the selected mode's env files (default `/`). An
+explicit `--base=/kingdom-spellers/` supports project-path builds. The separate
+project-path output above is verification only; `npm run deploy` still publishes
+`build/` with the production custom-domain CNAME. HashRouter remains intact.
+
+The optional browser suite requires Playwright and installed Microsoft Edge:
+
+```powershell
+npm install --no-save --package-lock=false playwright
+npm run test:greenwood
+```
+
+It runs against the local demo server on port 3100, uses synthetic profiles in
+an isolated browser context, blocks external requests, and writes screenshots
+and results to `.snap/greenwood-review/`. `PLAYWRIGHT_MODULE` can instead point
+to an existing Playwright installation using a `file:///` module URL.
+`QA_URL` must be local; `QA_OUTPUT` can override the evidence destination.
+Scene crops hide fixed navigation for unobstructed art review; full-page
+captures retain actual app chrome. No test credentials are embedded.
+
+Validated: 56 game checks; 31 browser checks; root/project asset links; CNAME;
+configured private-value exclusion from the production bundle. No lint script
+exists. The existing large-bundle warning remains. Demo checks include actual
+spelling rewards and zero-reward Royal Tests, same-page duplicate clearing,
+purchase persistence, older boolean saves, two child profiles, insufficient
+gold, pan/zoom, retry, and 375/768/1440 layouts.
+
+**Release gate:** review the screenshots and validate real parent login,
+existing children, cross-device Appwrite sync, historical purchases/mastery,
+OCR review and definition editing in an owner-controlled session before
+publishing. No live child data was changed. The inherited coin/profile update
+and progress write are separate requests: cross-device concurrency and failures
+between those writes require a trusted transactional backend endpoint for a
+server-atomic guarantee. Stage one guards rapid actions in the current page;
+it does not claim to solve that existing backend limitation. Sprints two and
+three remain future work. This upgrade has not been deployed.
