@@ -12,6 +12,7 @@ import Avatar from "../components/Avatar";
 import ProgressBar from "../components/ProgressBar";
 import StatPill from "../components/StatPill";
 import IsoVillage from "../components/kingdom/IsoVillage";
+import GreenwoodVillage from "../components/kingdom/GreenwoodVillage";
 import { BuildingArt, buildingSize, LandArt } from "../components/kingdom/buildingArt";
 import CelebrationSequence from "../components/kingdom/CelebrationSequence";
 import { RACE_UNLOCK_TESTS } from "../game/race";
@@ -155,6 +156,9 @@ export default function KingdomPage() {
   const [progress, setProgress] = useState(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
+  const mutationLock = useRef(false);
+  const loadVersion = useRef(0);
+  const [loadError, setLoadError] = useState("");
   const [toast, setToast] = useState("");
   const [celebrating, setCelebrating] = useState(null); // building id just placed
   const [focus, setFocus] = useState(null);
@@ -168,24 +172,28 @@ export default function KingdomPage() {
 
   const load = useCallback(async () => {
     if (!playerId) return;
+    const version = ++loadVersion.current;
     setLoading(true);
+    setLoadError("");
     try {
       const [profiles, prog] = await Promise.all([
         backend.profiles.list(),
         backend.progress.get(playerId),
       ]);
+      if (version !== loadVersion.current) return;
       const p = profiles.find((x) => x.id === playerId);
       setPlayer(p || null);
       setProgress(prog);
     } catch (err) {
-      console.error(err);
+      if (version === loadVersion.current) setLoadError("Your kingdom could not be loaded. Please try again.");
     } finally {
-      setLoading(false);
+      if (version === loadVersion.current) setLoading(false);
     }
   }, [playerId]);
 
   useEffect(() => {
     load();
+    return () => { loadVersion.current += 1; };
   }, [load]);
 
   // plotState() itself understands the older `{ id: true }` format and maps it
@@ -263,6 +271,7 @@ export default function KingdomPage() {
   }, []);
 
   if (loading) return <p className="ks-muted">Loading kingdom…</p>;
+  if (loadError) return <div className="card" role="alert"><p>{loadError}</p><button type="button" className="btn" onClick={load}>Retry loading kingdom</button></div>;
   if (!player || !progress) {
     return (
       <div className="card text-center">
@@ -295,7 +304,7 @@ export default function KingdomPage() {
   };
 
   const build = async (building) => {
-    if (busy) return;
+    if (mutationLock.current) return;
     if (plotState(built, building.id) !== PLOT.CLEARED) {
       flash(`Clear the land first before building the ${building.name}.`);
       return;
@@ -304,6 +313,7 @@ export default function KingdomPage() {
       flash(`You need ${building.cost - gold} more gold for the ${building.name}.`);
       return;
     }
+    mutationLock.current = true;
     setBusy(true);
     try {
       const nextBuilt = { ...built, [building.id]: PLOT.BUILT };
@@ -351,18 +361,20 @@ export default function KingdomPage() {
       console.error(err);
       flash("Could not save that. Please try again.");
     } finally {
+      mutationLock.current = false;
       setBusy(false);
     }
   };
 
   // Clear wild land so a structure can be built on it.
   const clearLand = async (building) => {
-    if (busy) return;
+    if (mutationLock.current) return;
     if (plotState(built, building.id) !== PLOT.WILD) return;
     if (gold < building.clearCost) {
       flash(`You need ${building.clearCost - gold} more gold to clear that land.`);
       return;
     }
+    mutationLock.current = true;
     setBusy(true);
     try {
       const nextBuilt = { ...built, [building.id]: PLOT.CLEARED };
@@ -385,6 +397,7 @@ export default function KingdomPage() {
       console.error(err);
       flash("Could not clear that land. Please try again.");
     } finally {
+      mutationLock.current = false;
       setBusy(false);
     }
   };
@@ -393,12 +406,13 @@ export default function KingdomPage() {
   const kingdomById = (b) => KINGDOMS.find((k) => k.buildings.some((x) => x.id === b.id));
 
   const claimTerritory = async (index) => {
-    if (busy) return;
+    if (mutationLock.current) return;
     const cost = TERRITORY_CLAIM_COST[index];
     if (gold < cost) {
       flash(`You need ${cost - gold} more gold to claim ${KINGDOMS[index].name}.`);
       return;
     }
+    mutationLock.current = true;
     setBusy(true);
     try {
       const nextUnlocked = [...(progress.unlocked_kingdoms || [1]), KINGDOMS[index].id];
@@ -419,12 +433,13 @@ export default function KingdomPage() {
       console.error(err);
       flash("Could not claim that territory.");
     } finally {
+      mutationLock.current = false;
       setBusy(false);
     }
   };
 
   return (
-    <div className={`ks-stack${cinema ? " ks-cinema" : ""}`} ref={cinemaRef}>
+    <div className={`ks-stack ks-kingdom-page${cinema ? " ks-cinema" : ""}`} ref={cinemaRef}>
       {/* Reward moment. Rendered above everything and dismissed by tapping. */}
       {reward && (
         <CelebrationSequence
@@ -436,7 +451,7 @@ export default function KingdomPage() {
         />
       )}
 
-      <div className="ks-spread">
+      <div className="ks-spread ks-kingdom-header">
         <h1 className="page-title">Your Kingdom</h1>
         <div className="ks-row" style={{ gap: 8 }}>
           <button
@@ -494,33 +509,6 @@ export default function KingdomPage() {
         </p>
       )}
 
-      {/* rank ladder */}
-      <div className="card">
-        <h3 className="mt-0" style={{ fontSize: "1.1rem" }}>Your rank</h3>
-        <div className="ks-row-wrap">
-          {RANKS.map((r) => {
-            const reached = prosperity >= r.min;
-            const isCurrent = r.id === rank.id;
-            return (
-              <div
-                key={r.id}
-                className="card-flat"
-                style={{
-                  opacity: reached ? 1 : 0.45,
-                  border: isCurrent ? "2px solid var(--gold)" : "2px solid transparent",
-                  textAlign: "center",
-                  minWidth: 96,
-                }}
-              >
-                <div style={{ fontSize: "1.4rem" }} aria-hidden>{r.icon}</div>
-                <div style={{ fontWeight: 700 }}>{r.title}</div>
-                <div className="ks-small ks-muted">{r.min} prosperity</div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
       {/* kingdoms */}
       {KINGDOMS.map((kingdom, index) => {
         const unlocked = (progress.unlocked_kingdoms || [1]).includes(kingdom.id);
@@ -567,6 +555,10 @@ export default function KingdomPage() {
                   Claim for {claimCost} 🪙
                 </button>
               </div>
+            ) : kingdom.id === 1 ? (
+              <GreenwoodVillage key={playerId} built={built} gold={gold} busy={busy} companion={player.avatar?.companion}
+                onClear={clearLand} onBuild={build}
+                onPractice={() => navigate(`/play?playerId=${encodeURIComponent(playerId)}`, { state: { playerId } })} />
             ) : (
               <>
                 <div style={{ position: "relative", marginTop: 14 }}>
@@ -635,6 +627,33 @@ export default function KingdomPage() {
           </div>
         );
       })}
+
+      {/* rank ladder */}
+      <div className="card">
+        <h3 className="mt-0" style={{ fontSize: "1.1rem" }}>Your rank</h3>
+        <div className="ks-row-wrap">
+          {RANKS.map((r) => {
+            const reached = prosperity >= r.min;
+            const isCurrent = r.id === rank.id;
+            return (
+              <div
+                key={r.id}
+                className="card-flat"
+                style={{
+                  opacity: reached ? 1 : 0.45,
+                  border: isCurrent ? "2px solid var(--gold)" : "2px solid transparent",
+                  textAlign: "center",
+                  minWidth: 96,
+                }}
+              >
+                <div style={{ fontSize: "1.4rem" }} aria-hidden>{r.icon}</div>
+                <div style={{ fontWeight: 700 }}>{r.title}</div>
+                <div className="ks-small ks-muted">{r.min} prosperity</div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
 
       {toast && (
         <div

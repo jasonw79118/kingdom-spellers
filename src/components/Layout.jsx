@@ -43,6 +43,8 @@ export default function Layout() {
         <Outlet />
       </main>
 
+      <small className="ks-version">Greenwood · 2026.10.21 · stage 1</small>
+
       <nav className="bottomnav" aria-label="Main navigation">
         {NAV.map((item) => (
           <NavLink

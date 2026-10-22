@@ -17,7 +17,10 @@
     "audit:shop": "node scripts/audit-shop.mjs",
     "audit:scene": "node scripts/audit-scene.mjs",
     "snap:shop": "node scripts/look-shop.mjs",
-    "test": "node scripts/verify-game.mjs"
+    "test": "node scripts/verify-game.mjs",
+    "dev:demo": "vite --mode demo",
+    "test:greenwood": "node scripts/verify-greenwood.mjs",
+    "verify:release": "node scripts/verify-release.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.57.0",

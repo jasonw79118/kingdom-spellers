@@ -15,7 +15,8 @@ import VoicePicker from "../components/VoicePicker";
 import { normalizeWord, shuffleArray } from "../lib/utils";
 
 export default function PlayPage() {
-  const { playerId } = useSearchParams();
+  const [searchParams] = useSearchParams();
+  const playerId = searchParams.get("playerId");
   const location = useLocation();
   const navigate = useNavigate();
   const statePlayerId = playerId || location.state?.playerId;
@@ -230,10 +231,10 @@ export default function PlayPage() {
       // A finished Royal Test counts toward unlocking the pet race, so the
       // counter is bumped here rather than on submit — a child may walk away
       // part-way through and still have sat (and finished) the test.
-      if (updated.mode === "test" && playerId) {
+      if (updated.mode === "test" && statePlayerId) {
         try {
-          const prog = await backend.progress.get(playerId);
-          await backend.progress.save(playerId, {
+          const prog = await backend.progress.get(statePlayerId);
+          await backend.progress.save(statePlayerId, {
             ...prog,
             royal_tests_completed: (prog.royal_tests_completed || 0) + 1,
           });

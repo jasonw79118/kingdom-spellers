@@ -1,4 +1,4 @@
-import { defineConfig } from "vite";
+import { defineConfig, loadEnv } from "vite";
 import react from "@vitejs/plugin-react";
 import fs from "node:fs";
 import path from "node:path";
@@ -37,15 +37,18 @@ function snapshotEndpoint() {
 
 // The custom domain serves the app at the root.
 // Override with VITE_BASE for a GitHub Pages project-subpath deployment.
-export default defineConfig({
-  plugins: [react(), snapshotEndpoint()],
-  base: process.env.VITE_BASE || "/",
-  build: {
-    outDir: "build",
-    sourcemap: false,
-  },
-  server: {
-    port: 3000,
-    host: true,
-  },
+export default defineConfig(({ mode }) => {
+  const env = loadEnv(mode, process.cwd(), "VITE_BASE");
+  return {
+    plugins: [react(), snapshotEndpoint()],
+    base: env.VITE_BASE || "/",
+    build: {
+      outDir: "build",
+      sourcemap: false,
+    },
+    server: {
+      port: 3000,
+      host: true,
+    },
+  };
 });
