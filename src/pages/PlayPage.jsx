@@ -7,6 +7,7 @@ import { useEffect, useState, useCallback, useRef } from "react";
 import { useNavigate, useSearchParams, useLocation } from "react-router-dom";
 import { backend } from "../lib/backend";
 import { performKingdomAction, expansionActionsAvailable } from "../lib/kingdomActions";
+import "./SpellingAdventure.css";
 import Avatar from "../components/Avatar";
 import { buildPracticeSet, masteryLevel } from "../game/mastery";
 import { createSession, buildPuzzle, gradeAnswer, advanceSession, sessionSummary, MODES } from "../game/practice";
@@ -28,7 +29,9 @@ export default function PlayPage() {
   const [player, setPlayer] = useState(null);
   const [lists, setLists] = useState([]);
   const [listId, setListId] = useState(null);
-  const [setupMode, setSetupMode] = useState("practice");
+  const [inputMode, setInputMode] = useState("tiles");
+  const [typedWord, setTypedWord] = useState("");
+  const [completed, setCompleted] = useState(null);
   const [session, setSession] = useState(null);
   const [puzzle, setPuzzle] = useState(null);
   const [answer, setAnswer] = useState([]);
@@ -96,6 +99,8 @@ export default function PlayPage() {
         size,
       });
       setSession(s);
+      setCompleted(null);
+      setTypedWord("");
       // createSession preserves the caller's order — use the session's own
       // first word so the puzzle always matches what's displayed.
       const firstPuzzle = buildPuzzle(s.words[0].word, s.hintLevel);
@@ -251,6 +256,7 @@ export default function PlayPage() {
         }
         setMissionResult({correct,total:updated.total,message});
       }
+      setCompleted(sessionSummary(updated));
       setSession(null);
       setPuzzle(null);
       return;
@@ -260,6 +266,7 @@ export default function PlayPage() {
     wordRef.current = nextWord.word;
     answerRef.current = p.answer;
     tilesRef.current = p.tiles;
+    setTypedWord("");
     setSession(updated);
     setPuzzle(p);
     setAnswer(p.answer);
@@ -298,7 +305,9 @@ export default function PlayPage() {
   if (!session) {
     const summary = null;
     return (
-      <div className="ks-stack">
+      <div className="ks-stack spell-setup">
+        <section className="spell-welcome"><span className="spell-eyebrow">THE GREENWOOD WORD TRAIL</span><h2>Little words. A growing kingdom.</h2><p>Listen, discover, and spell. Every word is another step on your adventure.</p></section>
+        {completed && <section className="spell-complete" role="status"><span className="spell-eyebrow">CHAPTER COMPLETE</span><h2>You followed the word trail!</h2><p>{completed.correct ?? 0} words spelled correctly. Every try helps you learn.</p><p className="spell-loot">{earnedGold} gold earned · {earnedXp} XP earned</p><button type="button" className="btn btn-forest" onClick={() => navigate(`/kingdom/${player.id}`)}>Return to your kingdom →</button></section>}
         <div className="ks-spread">
           <h1 className="page-title">Practice</h1>
           <button type="button" className="btn btn-ghost" onClick={() => navigate("/")}>
@@ -384,17 +393,18 @@ export default function PlayPage() {
   const hintLevel = puzzle ? puzzle.prefilledCount : 0;
 
   return (
-    <div className="ks-stack">
-      <div className="ks-spread">
+    <div className="spell-adventure">
+      <header className="spell-heading"><div><span className="spell-eyebrow">GREENWOOD VILLAGE · {session.mode === "test" ? "ROYAL TEST" : "WORD TRAIL"}</span><h1>{session.mode === "test" ? "The royal spelling challenge" : "Your words bring the kingdom to life"}</h1></div><span className="spell-satchel" aria-label="Your gold">Gold {player.coins || 0}{earnedGold > 0 && <small>+{earnedGold} this adventure</small>}</span></header>
+      <div className="spell-hud ks-spread">
         <span className="badge">Word {Math.min(session.index + 1, session.total)} of {session.total}</span>
-        <div className="ks-row" style={{ gap: 6 }}>
-          <span className="badge badge-gold">🪙 {player.coins || 0}</span>
-          {earnedGold > 0 && <span className="badge badge-forest">+{earnedGold}</span>}
-        </div>
-      </div>
-      <div className="progress"><div className="progress-fill" style={{ width: `${progress}%` }} /></div>
 
-      <div className="card text-center ks-stack">
+      </div>
+      <div className="spell-trail" aria-label="Word journey">{session.words.map((_, i) => <span key={i} className={i < session.index ? "passed" : i === session.index ? "current" : ""} aria-label={`Word ${i + 1}${i < session.index ? ", visited" : i === session.index ? ", current" : ""}`}>{i < session.index ? "✓" : i + 1}</span>)}</div>
+      <div className="progress" role="progressbar" aria-label="Session progress" aria-valuenow={session.index} aria-valuemin={0} aria-valuemax={session.total}><div className="progress-fill" style={{ width: `${session.index / session.total * 100}%` }} /></div>
+
+      <div className="spell-book text-center ks-stack">
+        <div className="spell-book-title"><span aria-hidden="true">✦</span><span>{session.mode === "test" ? "A royal word awaits" : "Listen. Imagine. Spell."}</span><span aria-hidden="true">✦</span></div>
+        <p className="spell-instruction">{inputMode === "tiles" ? "Tap the letters to spell your word. Tap a filled space to change it." : "Type your word, then check your spelling."}</p>
         {/* definition clue */}
         {currentWord && (
           <p className="ks-muted" style={{ margin: 0 }}>
@@ -402,8 +412,10 @@ export default function PlayPage() {
           </p>
         )}
 
+        <div className="spell-mode" role="group" aria-label="How to spell"><button type="button" aria-pressed={inputMode === "tiles"} disabled={locked} onClick={() => setInputMode("tiles")}>Letter tiles</button><button type="button" aria-pressed={inputMode === "type"} disabled={locked} onClick={() => setInputMode("type")}>Type a word</button></div>
+        {inputMode === "type" && !feedback && <form className="spell-type" onSubmit={e => {e.preventDefault(); if (typedWord.trim()) {answerRef.current = typedWord.trim().split(""); submit(answerRef.current);}}}><label htmlFor="spell-word">Your spelling</label><input id="spell-word" value={typedWord} onChange={e => setTypedWord(e.target.value)} autoComplete="off" autoCorrect="off" autoCapitalize="none" spellCheck={false} disabled={locked} /><button className="btn btn-forest" disabled={locked || !typedWord.trim()}>Check word</button></form>}
         {/* answer slots */}
-        <div className="ks-row-wrap" style={{ justifyContent: "center", gap: 6, margin: "8px 0" }}>
+        <div hidden={inputMode === "type"} className="spell-slots ks-row-wrap" style={{ justifyContent: "center", gap: 6, margin: "8px 0" }}>
           {answer.map((ch, i) => {
             const wrong = feedback && !feedback.correct && i === feedback.wrongIndex;
             return (
@@ -411,13 +423,14 @@ export default function PlayPage() {
                 key={i}
                 type="button"
                 onClick={() => removeTile(i)}
+                disabled={locked}
                 style={{
-                  width: 42, height: 52,
+                  width: 44, height: 54,
                   fontSize: "1.6rem", fontWeight: 700, fontFamily: "var(--font-display)",
                   borderRadius: 12,
                   border: "2px solid",
-                  borderColor: feedback ? (wrong ? "var(--danger)" : "var(--forest)") : "var(--royal)",
-                  background: feedback ? (wrong ? "rgba(201,90,90,0.12)" : "rgba(90,168,106,0.12)") : "#fff",
+                  borderColor: feedback ? (wrong ? "var(--danger)" : "var(--forest)") : "#8e9770",
+                  background: feedback ? (wrong ? "rgba(201,90,90,0.12)" : "rgba(90,168,106,0.12)") : "#fffcf2",
                   color: "var(--ink)",
                 }}
                 aria-label={ch ? `Letter ${ch}` : `Empty slot ${i + 1}`}
@@ -460,8 +473,8 @@ export default function PlayPage() {
         )}
 
         {/* letter tray */}
-        {!feedback && (
-          <div className="ks-row-wrap" style={{ justifyContent: "center", gap: 8, marginTop: 8 }}>
+        {!feedback && inputMode === "tiles" && (
+          <div className="ks-row-wrap spell-tiles" style={{ justifyContent: "center", gap: 8, marginTop: 8 }}>
             {puzzle?.tiles.map((t, i) => (
               <button
                 key={t.id}
@@ -487,7 +500,7 @@ export default function PlayPage() {
 
         {/* feedback */}
         {feedback && (
-          <div className="ks-stack" style={{ alignItems: "center", gap: 4 }}>
+          <div className="ks-stack spell-feedback" role="status" style={{ alignItems: "center", gap: 4 }}>
             {feedback.correct ? (
               <>
                 <h2 style={{ margin: 0, color: "var(--forest)" }}>🎉 Correct!</h2>
@@ -508,11 +521,11 @@ export default function PlayPage() {
         )}
       </div>
 
-      <div className="ks-center">
+      <footer className="spell-footer"><p>{session.mode === "test" ? "Take your time. Royal Tests do not award gold." : "Correct words earn your normal gold and XP. Spend gold on your village."}</p>
         <button type="button" className="btn btn-ghost" onClick={() => { stopSpeaking(); setSession(null); setPuzzle(null); }}>
           Quit session
         </button>
-      </div>
+      </footer>
     </div>
   );
 }

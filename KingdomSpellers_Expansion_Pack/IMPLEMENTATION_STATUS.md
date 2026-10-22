@@ -199,3 +199,9 @@ Original pack images remain untouched. Their alpha audit is in
 References checked against the installed SDK:
 [Appwrite transactions](https://appwrite.io/docs/products/databases/documentsdb/transactions)
 and [authenticated function requests](https://appwrite.io/docs/products/functions/develop).
+
+
+## Spelling experience correction - 2026-10-22
+The owner's live screenshot showed the legacy practice card still in use. Rebuilt the existing PlayPage presentation with the painted Greenwood terrain, a parchment book, visited/current word trail, and session completion with real earned gold/XP. No buildings are depicted as owned. Practice setup now explains the kingdom connection. Added optional typed spelling with native form submission, autocorrect/spellcheck disabled, using the same grade/mastery/reward functions as tiles. No new currency, schema, account changes, or backend function activation. Existing mission, list, audio, test and tile paths retained. Styling is scoped to spelling, including narrow screens, visible focus and reduced motion.
+
+Validation: 56 learning/economy checks and 38 expansion browser checks passed, including a typed answer followed by tile answers, multi-word reward persistence and mobile overflow at 375/768px. Actual local demo screenshots are in qa/spelling-evidence. Production build passed. Browser automation uses isolated synthetic profiles, never production child data. Source user modification to localBackend.js remains excluded from commits.

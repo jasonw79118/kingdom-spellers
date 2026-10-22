@@ -87,13 +87,19 @@ try{
  check('Mission uses saved child list',await page.getByRole('option',{name:'Woodland words (3 words)',exact:true}).count()===1);
  await page.evaluate(()=>{window.qaSpoken=null;speechSynthesis.speak=utterance=>{window.qaSpoken=utterance.text;};});
  await page.getByRole('button',{name:'▶ Practice',exact:true}).click();
+ await page.locator('.spell-adventure').screenshot({path:path.join(out,'spelling-desktop.png')});
+ for(const width of [375,768]){await page.setViewportSize({width,height:1000});check(`Spelling fits ${width}px`,await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));await page.locator('.spell-adventure').screenshot({path:path.join(out,`spelling-${width}.png`)});}
+ await page.setViewportSize({width:1440,height:1080});
  for(let i=0;i<3;i++){
    await page.evaluate(()=>{window.qaSpoken=null;});
    await page.getByRole('button',{name:/Hear word/}).click();
    await page.waitForFunction(()=>window.qaSpoken!==null);
    const word=(await page.evaluate(()=>window.qaSpoken)).toLowerCase().trim();
    assert.ok(['cat','dog','sun'].includes(word),'Pronunciation matches parent word set');
+   if(i===0){await page.getByRole('button',{name:'Type a word',exact:true}).click();await page.getByLabel('Your spelling',{exact:true}).fill(word);await page.getByRole('button',{name:'Check word',exact:true}).click();}else{
+   await page.getByRole('button',{name:'Letter tiles',exact:true}).click();
    for(const ch of word)await page.locator(`button[aria-label="Letter ${ch}"]:not(:disabled)`).last().click();
+   }
    await page.getByRole('heading',{name:/Correct!/}).waitFor();
    await page.getByRole('heading',{name:/Correct!/}).waitFor({state:'hidden'});
  }
