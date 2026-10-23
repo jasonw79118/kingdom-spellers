@@ -3,6 +3,7 @@
 // cape, shield, crown/helmet, and a companion pet. Items unlock through
 // gameplay; the avatar is pure SVG so it scales crisply on any screen.
 
+import {useId} from "react";
 import { PET_ART } from "./kingdom/petArt";
 
 const SKIN_TONES = ["#f6d7b8", "#f2c9a0", "#e0ac7e", "#c98d5f", "#a06a42", "#7a4c2e"];
@@ -128,6 +129,7 @@ function Companion({ type }) {
 
 export default function Avatar({ config = DEFAULT_AVATAR, size = 96, className = "" }) {
   const a = { ...DEFAULT_AVATAR, ...config };
+  const artId=useId().replaceAll(":", "");
   const capeColor = a.cape ? CAPE_COLORS[a.cape] : null;
   const crownColor = a.crown ? CROWN_COLORS[a.crown] : null;
 
@@ -136,10 +138,16 @@ export default function Avatar({ config = DEFAULT_AVATAR, size = 96, className =
       viewBox="0 0 120 120"
       width={size}
       height={size}
-      className={`avatar ${className}`}
+      className={`avatar avatar-storybook-frame ${className}`}
       role="img"
       aria-label="player avatar"
     >
+      <defs>
+        <radialGradient id={artId+'skin'} cx="38%" cy="30%" r="75%"><stop offset="0" stopColor="#fff0d6"/><stop offset=".4" stopColor={a.skin}/><stop offset="1" stopColor={a.skin}/></radialGradient>
+        <linearGradient id={artId+'cloth'} x1="0" y1="0" x2="1" y2="1"><stop stopColor={a.tunic}/><stop offset=".55" stopColor={a.tunic}/><stop offset="1" stopColor="#30354b"/></linearGradient>
+        <radialGradient id={artId+'hair'} cx="40%" cy="20%"><stop stopColor="#cda06c"/><stop offset=".5" stopColor={a.hairColor}/><stop offset="1" stopColor={a.hairColor}/></radialGradient>
+      </defs>
+      <ellipse cx="60" cy="111" rx="27" ry="4" fill="#6b593a" opacity=".18"/>
       {/* cape (behind body) */}
       {capeColor && (
         <path
@@ -150,26 +158,29 @@ export default function Avatar({ config = DEFAULT_AVATAR, size = 96, className =
       )}
 
       {/* body / tunic */}
-      <path d="M42 62 Q60 54 78 62 L82 104 Q60 112 38 104 Z" fill={a.tunic} />
+      <path d="M42 62 Q60 54 78 62 L82 104 Q60 112 38 104 Z" fill={`url(#${artId}cloth)`} stroke="#554d43" strokeWidth=".7"/>
       <path d="M42 62 Q60 54 78 62 L79 72 Q60 65 41 72 Z" fill="rgba(0,0,0,0.12)" />
+      <path d="M43 63 55 73 60 64 65 73 77 63M46 74 43 101M74 74 77 101" fill="none" stroke="#e4c778" strokeWidth="1.5"/>
+      <path d="M58 74h4v10h-4z" fill="#d7b368"/>
+      <circle cx="60" cy="78" r="2.5" fill="#f7df95"/>
       {/* belt */}
       <rect x="42" y="86" width="36" height="6" rx="3" fill="rgba(0,0,0,0.18)" />
       <rect x="56" y="85" width="8" height="8" rx="2" fill="#e8b64c" />
 
       {/* head */}
-      <circle cx="60" cy="40" r="22" fill={a.skin} />
+      <circle cx="60" cy="40" r="22" fill={`url(#${artId}skin)`} stroke="#956c4e" strokeWidth=".45"/>
       {/* ears */}
       <circle cx="38" cy="42" r="4" fill={a.skin} />
       <circle cx="82" cy="42" r="4" fill={a.skin} />
 
       {/* hair */}
-      <Hair style={a.hair} color={a.hairColor} base={a.base} />
+      <Hair style={a.hair} color={`url(#${artId}hair)`} base={a.base} />
 
       {/* face */}
-      <circle cx="52" cy="42" r="2.4" fill="#2d2a32" />
-      <circle cx="68" cy="42" r="2.4" fill="#2d2a32" />
-      <circle cx="53" cy="41" r="0.8" fill="#fff" />
-      <circle cx="69" cy="41" r="0.8" fill="#fff" />
+      <path d="M46 35q6-3 10 0M64 35q5-3 10 0" stroke={a.hairColor} strokeWidth="1.5" fill="none" strokeLinecap="round"/><ellipse cx="52" cy="42" rx="4" ry="5" fill="#fff9ec"/><ellipse cx="52" cy="42" rx="2.8" ry="3.7" fill="#60482d"/><ellipse cx="52" cy="42" rx="1.8" ry="2.8" fill="#292b32"/>
+      <ellipse cx="68" cy="42" rx="4" ry="5" fill="#fff9ec"/><ellipse cx="68" cy="42" rx="2.8" ry="3.7" fill="#60482d"/><ellipse cx="68" cy="42" rx="1.8" ry="2.8" fill="#292b32"/>
+      <circle cx="53" cy="41" r="1.1" fill="#fff" />
+      <circle cx="69" cy="41" r="1.1" fill="#fff" />
       <path d="M54 50 Q60 55 66 50" stroke="#2d2a32" strokeWidth="1.8" fill="none" strokeLinecap="round" />
       {/* cheeks */}
       <circle cx="47" cy="48" r="3" fill="rgba(217,122,154,0.35)" />

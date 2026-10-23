@@ -1,0 +1,96 @@
+{
+  "tool": "built-in image_gen",
+  "processing": "alpha-bounds crop, resize, WebP compression; no reference crops shipped as sprites",
+  "assets": [
+    {
+      "id": "eli",
+      "generated_source": "exec-cfa175fa-9e8c-4d40-87fc-22c75511268f.png",
+      "size": [
+        367,
+        560
+      ],
+      "webp_bytes": 49220
+    },
+    {
+      "id": "grace",
+      "generated_source": "exec-6d4868a1-ec0e-4a8d-91a4-302d3c915d7a.png",
+      "size": [
+        373,
+        560
+      ],
+      "webp_bytes": 47606
+    },
+    {
+      "id": "bram",
+      "generated_source": "exec-efc25c26-f568-40e4-bbb4-d6cdc2025188.png",
+      "size": [
+        352,
+        560
+      ],
+      "webp_bytes": 54198
+    },
+    {
+      "id": "lyra",
+      "generated_source": "exec-269e1793-37f4-4b3a-a3fa-c5ab530f364c.png",
+      "size": [
+        365,
+        560
+      ],
+      "webp_bytes": 51262
+    },
+    {
+      "id": "finn",
+      "generated_source": "exec-b114ad10-b32c-42d2-bf44-735cec010016.png",
+      "size": [
+        339,
+        560
+      ],
+      "webp_bytes": 45246
+    },
+    {
+      "id": "isolde",
+      "generated_source": "exec-b8377787-fa2b-4f1b-9b0a-b00ba5a8f8aa.png",
+      "size": [
+        374,
+        560
+      ],
+      "webp_bytes": 48948
+    },
+    {
+      "id": "academy",
+      "generated_source": "exec-5c122d63-b859-4cda-84c5-badc4e639a5a.png",
+      "size": [
+        1536,
+        864
+      ],
+      "webp_bytes": 254276
+    },
+    {
+      "id": "chest",
+      "generated_source": "exec-7d0dd6a5-55f3-4533-ac4f-3c9b1e08a1b7.png",
+      "size": [
+        420,
+        392
+      ],
+      "webp_bytes": 32518
+    },
+    {
+      "id": "fountain",
+      "generated_source": "exec-401b1130-db3b-4802-9545-fb532df197be.png",
+      "size": [
+        420,
+        341
+      ],
+      "webp_bytes": 35038
+    },
+    {
+      "id": "lantern",
+      "generated_source": "exec-5b5df1d3-412b-4399-9917-d99ab1a7c788.png",
+      "size": [
+        420,
+        513
+      ],
+      "webp_bytes": 45874
+    }
+  ]
+}

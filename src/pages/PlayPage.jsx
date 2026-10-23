@@ -8,6 +8,9 @@ import { useNavigate, useSearchParams, useLocation } from "react-router-dom";
 import { backend } from "../lib/backend";
 import { performKingdomAction, expansionActionsAvailable } from "../lib/kingdomActions";
 import "./SpellingAdventure.css";
+import NpcCharacter from "../components/storybook/NpcCharacter";
+import RewardFeedback from "../components/storybook/RewardFeedback";
+import {savedMasteryLevel} from "../game/achievements";
 import Avatar from "../components/Avatar";
 import { buildPracticeSet, masteryLevel } from "../game/mastery";
 import { createSession, buildPuzzle, gradeAnswer, advanceSession, sessionSummary, MODES } from "../game/practice";
@@ -22,6 +25,9 @@ export default function PlayPage() {
   const missionId = searchParams.get("mission") === "first-words" ? "first-words" : null;
   const [missionResult, setMissionResult] = useState(null);
   const missionAttempts = useRef([]);
+  const knownMastery = useRef({});
+  const [newMastery,setNewMastery]=useState(false);
+  const [saveError,setSaveError]=useState("");
   const location = useLocation();
   const navigate = useNavigate();
   const statePlayerId = playerId || location.state?.playerId;
@@ -51,6 +57,7 @@ export default function PlayPage() {
   // --- load player + lists -------------------------------------------------
   useEffect(() => {
     let active = true;
+    setSession(null);setPuzzle(null);setCompleted(null);setMissionResult(null);setSaveError("");setPlayer(null);setLists([]);setListId(null);setEarnedGold(0);setEarnedXp(0);
     (async () => {
       if (!statePlayerId) { setLoading(false); return; }
       try {
@@ -82,6 +89,9 @@ export default function PlayPage() {
       if (!list || !list.words?.length) return;
 
       const records = await backend.mastery.list(player.id);
+      knownMastery.current=Object.fromEntries(records.map(r=>[normalizeWord(r.word),savedMasteryLevel(r)]));
+      setSaveError("");
+      setNewMastery(false);
       const byWord = {};
       for (const r of records) byWord[normalizeWord(r.word)] = r;
 
@@ -187,9 +197,15 @@ export default function PlayPage() {
 
     // Persist the attempt (this updates mastery server-side).
     try {
-      await backend.mastery.recordAttempt(player.id, word, listId, session.mode, grade.correct);
+      const record=await backend.mastery.recordAttempt(player.id, word, listId, session.mode, grade.correct);
+      const level=savedMasteryLevel(record);
+      setNewMastery(level==='mastered' && knownMastery.current[normalizeWord(word)]!=='mastered');
+      knownMastery.current[normalizeWord(word)]=level;
     } catch (err) {
       console.error("recordAttempt failed", err);
+      setSaveError("Your attempt could not be confirmed. Please return and refresh before practicing again.");
+      setReward(null);
+      return;
     }
 
     // Reward — tests are graded practice and pay nothing, so points always
@@ -211,15 +227,15 @@ export default function PlayPage() {
           setPlayer(current => ({ ...current, ...saved }));
           setEarnedGold(value => value + gold);
           setEarnedXp(value => value + xp);
+          setReward({gold,xp});
         } catch (error) {
+          setSaveError("Your reward save could not be confirmed. Refresh before continuing.");
           setMissionResult({error:"Practice was recorded, but rewards could not be confirmed. Refresh before continuing."});
+          return;
         }
       }
-      setReward(
-        gold > 0
-          ? { gold, xp }
-          : { gold: 0, xp: 0, isTest: true }
-      );
+      if (gold === 0 && xp === 0) setReward({gold:0,xp:0,isTest:true});
+
     }
 
     setTimeout(() => next(grade), grade.correct ? 1100 : 1700);
@@ -266,6 +282,7 @@ export default function PlayPage() {
     wordRef.current = nextWord.word;
     answerRef.current = p.answer;
     tilesRef.current = p.tiles;
+    setNewMastery(false);
     setTypedWord("");
     setSession(updated);
     setPuzzle(p);
@@ -307,7 +324,9 @@ export default function PlayPage() {
     return (
       <div className="ks-stack spell-setup">
         <section className="spell-welcome"><span className="spell-eyebrow">THE GREENWOOD WORD TRAIL</span><h2>Little words. A growing kingdom.</h2><p>Listen, discover, and spell. Every word is another step on your adventure.</p></section>
-        {completed && <section className="spell-complete" role="status"><span className="spell-eyebrow">CHAPTER COMPLETE</span><h2>You followed the word trail!</h2><p>{completed.correct ?? 0} words spelled correctly. Every try helps you learn.</p><p className="spell-loot">{earnedGold} gold earned · {earnedXp} XP earned</p><button type="button" className="btn btn-forest" onClick={() => navigate(`/kingdom/${player.id}`)}>Return to your kingdom →</button></section>}
+        <div className="academy-setup"><NpcCharacter id="eli" compact action="Choose your spelling list" onAction={()=>document.getElementById("pick-list")?.focus()}/></div>
+        {searchParams.get("challenge")==="royal"&&<NpcCharacter id="finn" compact action="See Royal Test choices" onAction={()=>document.getElementById("pick-list")?.focus()}/>}
+        {completed && <section className="spell-complete" role="status"><RewardFeedback event="session_complete" title="You followed the word trail!" message="Your confirmed spelling rewards are shown below."/><p>{completed.correct ?? 0} words spelled correctly. Every try helps you learn.</p><p className="spell-loot">{earnedGold} gold earned · {earnedXp} XP earned</p><button type="button" className="btn btn-forest" onClick={() => navigate(`/kingdom/${player.id}`)}>Return to your kingdom →</button></section>}
         <div className="ks-spread">
           <h1 className="page-title">Practice</h1>
           <button type="button" className="btn btn-ghost" onClick={() => navigate("/")}>
@@ -394,7 +413,7 @@ export default function PlayPage() {
 
   return (
     <div className="spell-adventure">
-      <header className="spell-heading"><div><span className="spell-eyebrow">GREENWOOD VILLAGE · {session.mode === "test" ? "ROYAL TEST" : "WORD TRAIL"}</span><h1>{session.mode === "test" ? "The royal spelling challenge" : "Your words bring the kingdom to life"}</h1></div><span className="spell-satchel" aria-label="Your gold">Gold {player.coins || 0}{earnedGold > 0 && <small>+{earnedGold} this adventure</small>}</span></header>
+      <header className="spell-heading"><div><span className="spell-eyebrow">GREENWOOD ACADEMY · {session.mode === "test" ? "ROYAL TEST" : "WORD TRAIL"}</span><h1>{session.mode === "test" ? "The royal spelling challenge" : "Your words bring the kingdom to life"}</h1></div><span className="spell-satchel" aria-label="Your gold">Gold {player.coins || 0}{earnedGold > 0 && <small>+{earnedGold} this adventure</small>}</span></header>
       <div className="spell-hud ks-spread">
         <span className="badge">Word {Math.min(session.index + 1, session.total)} of {session.total}</span>
 
@@ -402,6 +421,7 @@ export default function PlayPage() {
       <div className="spell-trail" aria-label="Word journey">{session.words.map((_, i) => <span key={i} className={i < session.index ? "passed" : i === session.index ? "current" : ""} aria-label={`Word ${i + 1}${i < session.index ? ", visited" : i === session.index ? ", current" : ""}`}>{i < session.index ? "✓" : i + 1}</span>)}</div>
       <div className="progress" role="progressbar" aria-label="Session progress" aria-valuenow={session.index} aria-valuemin={0} aria-valuemax={session.total}><div className="progress-fill" style={{ width: `${session.index / session.total * 100}%` }} /></div>
 
+      <div className="academy-workspace"><div className="academy-mentor"><NpcCharacter id="eli" dialogue={feedback ? feedback.correct ? newMastery ? 'Your practice is taking root. This word has reached mastery in your saved learning history!' : 'Well spelled! A little learning makes a big difference.' : 'That was a good try. Look at the word, listen again, and we will revisit it.' : 'Listen to your word. Say its sounds quietly, then put them in order.'} onAction={()=>speakWord(currentWord.word)} action="Listen with Eli"/></div>
       <div className="spell-book text-center ks-stack">
         <div className="spell-book-title"><span aria-hidden="true">✦</span><span>{session.mode === "test" ? "A royal word awaits" : "Listen. Imagine. Spell."}</span><span aria-hidden="true">✦</span></div>
         <p className="spell-instruction">{inputMode === "tiles" ? "Tap the letters to spell your word. Tap a filled space to change it." : "Type your word, then check your spelling."}</p>
@@ -498,28 +518,10 @@ export default function PlayPage() {
           </div>
         )}
 
-        {/* feedback */}
-        {feedback && (
-          <div className="ks-stack spell-feedback" role="status" style={{ alignItems: "center", gap: 4 }}>
-            {feedback.correct ? (
-              <>
-                <h2 style={{ margin: 0, color: "var(--forest)" }}>🎉 Correct!</h2>
-                {reward?.isTest ? (
-                  <span className="badge badge-forest">Test practice — no points</span>
-                ) : reward ? (
-                  <span className="badge badge-gold">+{reward.gold} gold · +{reward.xp} XP</span>
-                ) : null}
-              </>
-            ) : (
-              <>
-                <h2 style={{ margin: 0, color: "var(--danger)" }}>Not quite — the word is</h2>
-                <h1 style={{ margin: 0, fontSize: "2.2rem" }}>{currentWord.word}</h1>
-                <span className="badge badge-rose">You'll see it again soon</span>
-              </>
-            )}
-          </div>
-        )}
-      </div>
+        {/* Feedback reflects confirmed saves, not a second payout. */}
+        {saveError&&<p role="alert">{saveError}<button type="button" className="btn" onClick={()=>{stopSpeaking();setSession(null);setPuzzle(null);}}>Return to practice choices</button></p>}
+        {feedback&&!saveError&&<div className="ks-stack spell-feedback" style={{alignItems:'center',gap:4}}><RewardFeedback event={feedback.correct ? newMastery ? 'word_mastered':'word_correct':'word_retry'} title={feedback.correct?'Correct!':'Not quite — let’s explore it'} message={feedback.correct ? newMastery ? 'Word mastered! Repeated practice is paying off.':'Every word is a step forward.' : 'Listen once more. You will see this word again.'} gold={reward?.gold || 0} xp={reward?.xp || 0}>{!feedback.correct&&<strong className="retry-word">{currentWord.word}</strong>}{reward?.isTest&&<span className="badge badge-forest">Royal Test · no points</span>}</RewardFeedback></div>}
+      </div></div>
 
       <footer className="spell-footer"><p>{session.mode === "test" ? "Take your time. Royal Tests do not award gold." : "Correct words earn your normal gold and XP. Spend gold on your village."}</p>
         <button type="button" className="btn btn-ghost" onClick={() => { stopSpeaking(); setSession(null); setPuzzle(null); }}>

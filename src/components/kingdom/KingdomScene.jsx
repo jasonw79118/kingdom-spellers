@@ -3,14 +3,10 @@ import { PLOT, plotState } from '../../game/kingdom';
 import { buildingLevel, expansionOf } from '../../game/expansion';
 import { SPRITES, TERRAIN } from './assetRegistry';
 import PetArt from './petArt';
+import DecorationLayer from '../storybook/DecorationLayer';
 
-export function KingdomSprite({id,level=1,className='',registry=SPRITES}) {
-  const key=id==='cottage' && level>=2 ? 'cottage-grand' : id;
-  const art=registry[key];
-  const [failed,setFailed]=useState(0);
-  if (!art || failed>1) return <span className="ks-art-fallback" role="img" aria-label="Landmark artwork unavailable.">Saved landmark · artwork unavailable</span>;
-  return <img className={className} src={failed ? art.fallback : art.src} alt="" draggable="false" decoding="async" loading="lazy" width={art.width} height={art.height} onError={()=>setFailed(n=>n+1)}/>;
-}
+import {KingdomSprite} from './KingdomSprite';
+export {KingdomSprite} from './KingdomSprite';
 
 function Banners({lanterns=false}) {
   return <svg viewBox="0 0 100 115" aria-hidden="true"><g stroke="#876742" strokeWidth="4"><path d="M20 110V14M80 110V14"/></g>{lanterns?<g fill="#ffe6a0" stroke="#7d6338" strokeWidth="3"><path d="M12 15h16v22H12ZM72 15h16v22H72Z"/><path d="M20 17v19M80 17v19" strokeWidth="1"/></g>:<g fill="#2f65a5" stroke="#edc66c" strokeWidth="2"><path d="M20 15h29v56L34 61l-14 10ZM51 15h29v56L65 61l-14 10Z"/><path d="m34 27 2 6 6 2-6 2-2 6-2-6-6-2 6-2ZM65 27l2 6 6 2-6 2-2 6-2-6-6-2 6-2Z" fill="#f3d480"/></g>}</svg>;
@@ -40,7 +36,7 @@ export default function KingdomScene({region,sites,built,selectedId,gold,onSelec
         </div>;
       })}
     </div>
-    {Object.entries(data.decorations).filter(([,owned])=>owned).map(([key])=><div key={key} className={`ks-decoration ks-decor-${key}`} data-decoration-id={key} aria-label={key.replaceAll('-',' ')}>{key.includes('garden')||key.includes('flower')?<KingdomSprite id="garden" registry={assets.sprites}/>:<Banners lanterns={key.includes('lantern')}/>}</div>)}
+    <DecorationLayer data={data}/>
     <div className="ks-scene-vignette" aria-hidden="true"/>
   </div>;
 }

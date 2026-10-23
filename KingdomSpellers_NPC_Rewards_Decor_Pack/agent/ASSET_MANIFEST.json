@@ -1,0 +1,90 @@
+{
+  "pack": "Kingdom Spellers NPC Rewards & Decor",
+  "assets": [
+    {
+      "file": "02_npc_mentor_character_reference.png",
+      "kind": "reference crop\u2014not isolated sprite"
+    },
+    {
+      "file": "03_npc_questgiver_character_reference.png",
+      "kind": "reference crop\u2014not isolated sprite"
+    },
+    {
+      "file": "04_npc_blacksmith_character_reference.png",
+      "kind": "reference crop\u2014not isolated sprite"
+    },
+    {
+      "file": "05_npc_professor_character_reference.png",
+      "kind": "reference crop\u2014not isolated sprite"
+    },
+    {
+      "file": "06_npc_captain_character_reference.png",
+      "kind": "reference crop\u2014not isolated sprite"
+    },
+    {
+      "file": "07_npc_royal_character_reference.png",
+      "kind": "reference crop\u2014not isolated sprite"
+    },
+    {
+      "file": "08_decor_art_reference.png",
+      "kind": "reference crop\u2014not isolated sprite"
+    },
+    {
+      "file": "09_ui_buttons_and_badges_reference.png",
+      "kind": "reference crop\u2014not isolated sprite"
+    },
+    {
+      "file": "10_reward_feedback_reference.png",
+      "kind": "reference crop\u2014not isolated sprite"
+    },
+    {
+      "file": "11_village_environment_reference.png",
+      "kind": "reference crop\u2014not isolated sprite"
+    },
+    {
+      "file": "12_building_upgrade_reference.png",
+      "kind": "reference crop\u2014not isolated sprite"
+    }
+  ],
+  "characters": [
+    {
+      "id": "mentor_eli",
+      "name": "Master Eli",
+      "location": "Academy"
+    },
+    {
+      "id": "lady_grace",
+      "name": "Lady Grace",
+      "location": "Marketplace"
+    },
+    {
+      "id": "blacksmith_bram",
+      "name": "Blacksmith Bram",
+      "location": "Blacksmith"
+    },
+    {
+      "id": "professor_lyra",
+      "name": "Professor Lyra",
+      "location": "Library"
+    },
+    {
+      "id": "captain_finn",
+      "name": "Captain Finn",
+      "location": "Challenge Corner"
+    },
+    {
+      "id": "queen_isolde",
+      "name": "Queen Isolde",
+      "location": "Castle"
+    }
+  ],
+  "reward_events": [
+    "word_correct",
+    "word_retry",
+    "word_mastered",
+    "quest_complete",
+    "building_unlocked",
+    "region_unlocked",
+    "rank_up"
+  ]
+}

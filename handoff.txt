@@ -1,50 +1,41 @@
-KINGDOM SPELLERS | PAINTED GREENWOOD EXPANSION | 2026-10-22-a
+KINGDOM SPELLERS | NPCs, ACADEMY, REWARDS & DECOR | 2026-10-23
 
-Implemented on feature/greenwood-storybook. Not deployed. No database migration,
-production permission change, account reset, or live child-data write.
-The original uncommitted src/lib/localBackend.js edit remains intact and
-excluded from upgrade commits; its baseline copy is .snap/expansion-baseline/.
+Branch: feature/academy-npcs. This feature is NOT deployed.
+Earlier Greenwood/spelling changes were published on 2026-10-22; that live
+release is unchanged by this work. No migrations, account resets, production
+permission changes or writes to live child data. Original localBackend.js
+working changes remain untouched and excluded from this feature's commit.
 
-Delivered: supplied painted building sprites; empty painted terrain; separate
-interactive construction/owned states; purchased upgrades through level 3;
-three quests; two decor buys; a parent-word spelling mission with a persistent
-once-only garden; saved metadata, pan/zoom, accessibility and fallback assets.
-The renderer accepts region/slot/asset inputs; typed contracts cover canonical
-buildings, regions, ranks, levels, unlocks, cosmetics, quests and reward sources.
-Four other regions retain their working original scenes and canonical IDs.
+Delivered: six clean painted NPCs with actual existing game actions; illustrated
+academy and Master Eli beside both tile/typed spelling; reusable chest feedback
+for correct/retry/mastery/quest/build/region/rank events; badges derived from
+saved mastery/quests without new payouts; fountain and lantern purchases;
+free saved placement at safe decoration-only anchors; mobile/reduced-motion
+support and PNG sprite fallbacks. Modular saved avatars retain all options,
+with improved shading, eyes, trim and portrait framing.
 
-Shared rules and adapters: src/game/expansion.js, src/game/kingdomContent.d.ts,
-src/lib/kingdomActions.js, server/kingdom-service.mjs and kingdom-function.mjs.
-Other changed paths and every design/economy/persistence decision:
-KingdomSpellers_Expansion_Pack/IMPLEMENTATION_STATUS.md.
-Artwork source paths, final project assets and exact built-in generation prompts:
-KingdomSpellers_Expansion_Pack/ART_PROVENANCE.md.
+192 passing checks: 56 core + 21 expansion contracts + 9 NPC/decor rules +
+31 original browser + 38 expansion browser + 37 NPC browser. Root and subpath
+builds plus release/secret checks pass. Existing large-bundle warning remains.
+Actual after screenshots and machine-readable results: qa/npc-evidence/.
+Before spelling screenshots: qa/spelling-evidence/.
 
-Tests: 56 core + 21 expansion/contract + 31 regression browser + 36 expansion
-browser checks pass. Root/project-path builds, asset links, CNAME and private
-value bundle checks pass. No lint script. Existing large-bundle warning remains.
-Screenshot evidence: qa/expansion-evidence/. Browser writes used synthetic,
-isolated demo profiles; cloud transaction tests used an injected fake service.
+Implementation, limitations, complete changed-file manifest and tests:
+KingdomSpellers_NPC_Rewards_Decor_Pack/IMPLEMENTATION.md
+KingdomSpellers_NPC_Rewards_Decor_Pack/CHANGED_FILES.md
+Art source manifest and exact built-in image generation prompts:
+KingdomSpellers_NPC_Rewards_Decor_Pack/PRODUCTION_ASSETS.json
+KingdomSpellers_NPC_Rewards_Decor_Pack/ART_PROVENANCE.md
 
-Local preview: npm run dev:demo -- --host 127.0.0.1 --port 3110 --strictPort
-URL: http://127.0.0.1:3110/ (separate local demo data; create disposable profiles).
-Node tests: npm test; npm run test:expansion.
-Optional Playwright: npm run test:expansion:browser, npm run test:greenwood,
-with QA_URL=http://127.0.0.1:3110 and Playwright installed or PLAYWRIGHT_MODULE
-pointing to an existing installation. See README for exact commands.
+Run local demo: npm run dev:demo -- --host 127.0.0.1 --port 3110 --strictPort
+URL: http://127.0.0.1:3110/ . Local demo uses separate disposable data.
+Run rules: npm test; npm run test:expansion; npm run test:npcs.
+Browser scripts: test:greenwood, test:expansion:browser, test:npcs:browser;
+set QA_URL=http://127.0.0.1:3110 and PLAYWRIGHT_MODULE if using cached Playwright.
 
-Review-only function package: npm run package:kingdom.
-Output .snap/kingdom-function-review, entry server/kingdom-function.mjs.
-Only allowlisted source and package metadata; no .env, credentials or child data.
-Requires explicit owner approval before any function installation/deployment,
-permission hardening, real-account staging tests or website release.
-Until approved/configured, existing cloud clear/build behavior is preserved;
-new cloud expansion spending/claims fail closed. The complete new loop is
-playable locally. Existing client-write/reward trust assumptions remain a
-production-hardening gate, not a solved server-authority claim.
-
-Manual release gates: owner visual acceptance; actual parent login/logout;
-existing children/history/mastery; cross-device saves; function invocation and
-conflict handling; permissions; physical device audio/camera/OCR review.
-No new regions, destructive migrations or deployment before approval.
-Production stays https://www.kingdomspellers.com/ on its previously published build.
+Cloud expansion actions remain gated pending approved installation and
+validation of the existing prepared Appwrite transaction function. New cloud
+decor purchases/moves, upgrade and quest claims are not activated. Avatar art
+remains modular SVG; the painted reference board is not substituted for saved
+customization. Extra concept-sheet props and wandering NPCs are future content.
+Do not deploy this feature without the owner's explicit approval.

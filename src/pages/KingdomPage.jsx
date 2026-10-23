@@ -10,6 +10,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { backend } from "../lib/backend";
 import { performKingdomAction, expansionActionsAvailable } from "../lib/kingdomActions";
 import { EXPANSION_KEY } from "../game/expansion";
+import RewardFeedback from "../components/storybook/RewardFeedback";
 import Avatar from "../components/Avatar";
 import ProgressBar from "../components/ProgressBar";
 import StatPill from "../components/StatPill";
@@ -318,7 +319,7 @@ export default function KingdomPage() {
       setProgress(current => ({ ...current, ...result.progress }));
       flash(result.message);
       if (!result.replay && ["build", "upgrade", "quest"].includes(action.type)) {
-        setReward({kind:"build", title:result.message, subtitle:"A new chapter for your village", icon:"✧"});
+        setReward({kind:"build", title:result.message, subtitle:"A new chapter for your village", event:action.type==="quest"?"quest_complete":"building_unlocked"});
       }
     } catch (error) {
       flash(error.message || "Your village could not be saved. Refresh before trying again.");
@@ -473,7 +474,7 @@ export default function KingdomPage() {
           kind={reward.kind}
           title={reward.title}
           subtitle={reward.subtitle}
-          icon={reward.icon}
+          icon={<RewardFeedback artOnly event={reward.event || (reward.kind==="rank"?"rank_up":reward.kind==="territory"?"region_unlocked":reward.kind==="quest"?"quest_complete":"building_unlocked")} title={reward.title} message={reward.subtitle}/>}
           onDone={() => setReward(null)}
         />
       )}
@@ -586,6 +587,8 @@ export default function KingdomPage() {
               <GreenwoodVillage key={playerId} built={built} gold={gold} busy={busy} companion={player.avatar?.companion}
                 onClear={clearLand} onBuild={build} mastery={mastery} expansionAvailable={expansionActionsAvailable}
                 onUpgrade={(building,level) => applyExpansion({type:"upgrade",target:building.id,level})}
+                onPlace={(target,slot) => applyExpansion({type:"place",target,slot})}
+                onGuide={id=>{if(id==="eli")navigate(`/play?playerId=${encodeURIComponent(playerId)}`);if(id==="lyra")navigate("/lists");if(id==="finn")navigate(`/play?playerId=${encodeURIComponent(playerId)}&challenge=royal`);if(id==="avatar")navigate(`/players?edit=${encodeURIComponent(playerId)}`);if(id==="isolde")document.querySelector(".ks-rank-ladder")?.scrollIntoView({block:"start"});}}
                 onDecorate={(target) => applyExpansion({type:"decorate",target})}
                 onQuest={(target) => applyExpansion({type:"quest",target})}
                 onPractice={(mission) => navigate(`/play?playerId=${encodeURIComponent(playerId)}${mission ? `&mission=${encodeURIComponent(mission)}` : ""}`, { state: { playerId } })} />
@@ -659,7 +662,7 @@ export default function KingdomPage() {
       })}
 
       {/* rank ladder */}
-      <div className="card">
+      <div className="card ks-rank-ladder" tabIndex={-1}>
         <h3 className="mt-0" style={{ fontSize: "1.1rem" }}>Your rank</h3>
         <div className="ks-row-wrap">
           {RANKS.map((r) => {

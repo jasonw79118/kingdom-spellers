@@ -3,7 +3,7 @@
   "private": true,
   "version": "2.0.0",
   "type": "module",
-  "description": "Kingdom Spellers 2.0 — a spelling-learning adventure game for children",
+  "description": "Kingdom Spellers 2.0 \u2014 a spelling-learning adventure game for children",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
@@ -23,7 +23,9 @@
     "verify:release": "node scripts/verify-release.mjs",
     "test:expansion": "node --test scripts/expansion.test.mjs",
     "test:expansion:browser": "node scripts/verify-expansion-browser.mjs",
-    "package:kingdom": "node scripts/package-kingdom-function.mjs"
+    "package:kingdom": "node scripts/package-kingdom-function.mjs",
+    "test:npcs": "node --test scripts/npcs.test.mjs",
+    "test:npcs:browser": "node scripts/verify-npcs-browser.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.57.0",

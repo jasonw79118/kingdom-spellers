@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { backend } from "../lib/backend";
+import NpcCharacter from "../components/storybook/NpcCharacter";
 import { formatDate } from "../lib/utils";
 
 const SOURCE_LABELS = {
@@ -56,6 +57,7 @@ export default function ListsPage() {
 
   return (
     <div className="ks-stack">
+      <NpcCharacter id="lyra" compact action="Create a word list with a parent" onAction={()=>navigate("/lists/new")}/>
       <div className="ks-spread">
         <h1 className="page-title">Spelling Lists</h1>
         <button type="button" className="btn" onClick={() => navigate("/lists/new")}>

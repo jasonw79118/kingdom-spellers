@@ -6,6 +6,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { backend } from "../lib/backend";
 import Avatar, { AVATAR_OPTIONS, DEFAULT_AVATAR } from "../components/Avatar";
+import NpcCharacter from "../components/storybook/NpcCharacter";
 import StatPill from "../components/StatPill";
 
 const GRADES = [1, 2, 3, 4, 5, 6];
@@ -20,6 +21,7 @@ function AvatarEditor({ value, onChange }) {
 
   return (
     <div className="card-flat">
+      <NpcCharacter id="bram" compact dialogue="Choose your own colors, hair and gear below. Your saved adventurer stays yours; a new portrait never replaces your choices."/>
       <div className="ks-row" style={{ marginBottom: 14 }}>
         <Avatar config={value} size={88} />
         <div className="ks-small ks-muted">

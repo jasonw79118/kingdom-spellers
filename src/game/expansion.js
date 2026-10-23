@@ -23,7 +23,19 @@ export const QUESTS = [
 export const DECORATIONS = [
   { id: 'flower-border', title: 'Cottage flower border', cost: KINGDOMS[0].buildings[0].clearCost, requires: 'cottage' },
   { id: 'village-banners', title: 'Village banners', cost: KINGDOMS[0].buildings[1].clearCost, requires: 'townhall' },
+  { id: 'garden-fountain', title: 'Garden fountain', cost: 25, requires: 'well' },
+  { id: 'reading-lanterns', title: 'Reading lanterns', cost: 15, requires: 'schoolhouse' },
 ];
+
+// Predetermined decoration-only anchors; none intersect saved building footprints.
+export const DECOR_SLOTS = {
+ 'meadow-west':{title:'West meadow',x:75,y:700,width:70},
+ 'garden-walk':{title:'Garden walk',x:350,y:710,width:60},
+ 'school-path':{title:'School path',x:1190,y:490,width:60},
+ 'river-bank':{title:'River bank',x:1200,y:690,width:75},
+};
+export const DEFAULT_DECOR_PLACEMENTS = {'reading-lanterns':'school-path','garden-fountain':'river-bank'};
+export const OWNABLE_DECOR_IDS = [...DECORATIONS.map(d=>d.id),...QUESTS.map(q=>q.reward)];
 
 export const ACTIVITIES = [
   { id: 'spelling-mission', title: 'Garden spelling mission', status: 'playable', maxWords: 5, rewardSource: 'existing-practice' },
@@ -33,7 +45,7 @@ export const ACTIVITIES = [
 
 export function expansionOf(buildings = {}) {
   const raw = buildings[EXPANSION_KEY];
-  return { ...raw, version: raw?.version || 1, levels: { ...raw?.levels }, decorations: { ...raw?.decorations }, quests: { ...raw?.quests } };
+  return { ...raw, version: raw?.version || 1, levels: { ...raw?.levels }, decorations: { ...raw?.decorations }, quests: { ...raw?.quests }, placements: { ...raw?.placements } };
 }
 
 export function buildingLevel(buildings, id) {
@@ -61,8 +73,9 @@ export function questEligible(quest, buildings, mastery) {
 /** Apply one authorized action against a fresh snapshot; caller commits atomically. */
 export function reduceKingdomAction(snapshot, action, actorId) {
   if (!snapshot.profile || !actorId || snapshot.profile.parent_id !== actorId) throw new Error('This player does not belong to your account.');
-  if (!action || !['clear','build','upgrade','decorate','quest'].includes(action.type)) throw new Error('Unknown kingdom action.');
-  if (Object.keys(action).some(key => !['type','target','level'].includes(key))) throw new Error('Unexpected kingdom action fields.');
+  if (!action || !['clear','build','upgrade','decorate','quest','place'].includes(action.type)) throw new Error('Unknown kingdom action.');
+  if (Object.keys(action).some(key => !['type','target','level','slot'].includes(key))) throw new Error('Unexpected kingdom action fields.');
+  if (action.type!=='place' && 'slot' in action) throw new Error('Locations only apply to owned decorations.');
   const profile = { ...snapshot.profile };
   const progress = { ...snapshot.progress, buildings: { ...snapshot.progress?.buildings } };
   const data = expansionOf(progress.buildings);
@@ -70,7 +83,18 @@ export function reduceKingdomAction(snapshot, action, actorId) {
   const gold = profile.coins ?? 0;
   if (!Number.isSafeInteger(gold) || gold < 0) throw new Error('Your gold balance needs to be refreshed.');
   let cost = 0, replay = false, message = '';
-  if (action.type === 'quest') {
+  if (action.type === 'place') {
+    if (!OWNABLE_DECOR_IDS.includes(action.target) || !data.decorations[action.target]) throw new Error('Earn or buy this decoration before placing it.');
+    if (action.slot!=='original' && !DECOR_SLOTS[action.slot]) throw new Error('Choose a safe decoration location.');
+    if (action.slot==='original' && DEFAULT_DECOR_PLACEMENTS[action.target]) throw new Error('Choose a safe decoration location.');
+    const current=data.placements[action.target] || DEFAULT_DECOR_PLACEMENTS[action.target] || 'original';
+    if (current===action.slot) replay=true;
+    else {
+      const occupied=action.slot!=='original' && OWNABLE_DECOR_IDS.some(id=>id!==action.target && data.decorations[id] && (data.placements[id] || DEFAULT_DECOR_PLACEMENTS[id])===action.slot);
+      if (occupied) throw new Error('That location already has a decoration. Choose another spot.');
+      data.placements[action.target]=action.slot;message='Decoration moved and saved.';
+    }
+  } else if (action.type === 'quest') {
     const quest = QUESTS.find(q=>q.id===action.target);
     if (!quest) throw new Error('Unknown mission.');
     if (data.quests[quest.id]) replay = true;
@@ -86,6 +110,13 @@ export function reduceKingdomAction(snapshot, action, actorId) {
     if (data.decorations[decor.id]) replay = true;
     else {
       if (plotState(progress.buildings,decor.requires)!==PLOT.BUILT) throw new Error('Build its village landmark first.');
+      const preferred=DEFAULT_DECOR_PLACEMENTS[decor.id];
+      if (preferred) {
+        const occupied=OWNABLE_DECOR_IDS.filter(id=>data.decorations[id]).map(id=>data.placements[id] || DEFAULT_DECOR_PLACEMENTS[id]);
+        const slot=[preferred,...Object.keys(DECOR_SLOTS)].find(id=>!occupied.includes(id));
+        if (!slot) throw new Error('Move a decoration back to its original spot to make room.');
+        data.placements[decor.id]=slot;
+      }
       cost = decor.cost; data.decorations[decor.id] = true; message = `${decor.title} placed.`;
     }
   } else {
