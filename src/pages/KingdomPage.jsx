@@ -11,6 +11,7 @@ import { backend } from "../lib/backend";
 import { performKingdomAction, expansionActionsAvailable } from "../lib/kingdomActions";
 import { EXPANSION_KEY } from "../game/expansion";
 import RewardFeedback from "../components/storybook/RewardFeedback";
+import {playGameSound} from "../lib/soundEffects";
 import Avatar from "../components/Avatar";
 import ProgressBar from "../components/ProgressBar";
 import StatPill from "../components/StatPill";
@@ -318,6 +319,15 @@ export default function KingdomPage() {
       setPlayer(current => ({ ...current, ...result.profile }));
       setProgress(current => ({ ...current, ...result.progress }));
       flash(result.message);
+      if(!result.replay){
+        let cue=({clear:"clear",build:"build",upgrade:"upgrade",quest:"quest",decorate:"decorate",place:"place"})[action.type];
+        if(action.type==="build"){
+          const savedBuildings=result.progress.buildings || {};
+          const savedProsperity=prosperityOf(Object.keys(savedBuildings).filter(id=>plotState(savedBuildings,id)===PLOT.BUILT));
+          if(rankForProsperity(savedProsperity,result.profile.avatar?.base).title!==rank.title)cue="rank";
+        }
+        playGameSound(cue);
+      }
       if (!result.replay && ["build", "upgrade", "quest"].includes(action.type)) {
         setReward({kind:"build", title:result.message, subtitle:"A new chapter for your village", event:action.type==="quest"?"quest_complete":"building_unlocked"});
       }
@@ -362,6 +372,7 @@ export default function KingdomPage() {
 
       // A promotion is the biggest moment in the game, so it gets the fullest
       // sequence; a finished castle is next; everything else is a short reward.
+      playGameSound(newRank.title!==prevRank.title?"rank":building.castle?"region":"build");
       if (newRank.title !== prevRank.title) {
         setReward({
           kind: "rank",
@@ -413,6 +424,7 @@ export default function KingdomPage() {
       setCelebrating(building.id);
       clearTimeout(celebrateTimer.current);
       celebrateTimer.current = setTimeout(() => setCelebrating(null), 1200);
+      playGameSound("clear");
       // Clearing is a step, not an achievement, so it gets a quiet card rather
       // than a full celebration — the real moment comes when something is built.
       setReward({
@@ -448,6 +460,7 @@ export default function KingdomPage() {
       await saveProgress(built, nextUnlocked);
       const p = await backend.profiles.list();
       setPlayer(p.find((x) => x.id === playerId) || player);
+      playGameSound("region");
       // Claiming a whole new territory is the biggest unlock in the game, so it
       // gets the longest sequence.
       setReward({

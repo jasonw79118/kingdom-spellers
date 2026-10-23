@@ -25,7 +25,9 @@
     "test:expansion:browser": "node scripts/verify-expansion-browser.mjs",
     "package:kingdom": "node scripts/package-kingdom-function.mjs",
     "test:npcs": "node --test scripts/npcs.test.mjs",
-    "test:npcs:browser": "node scripts/verify-npcs-browser.mjs"
+    "test:npcs:browser": "node scripts/verify-npcs-browser.mjs",
+    "test:sounds": "node --test scripts/sounds.test.mjs",
+    "test:sounds:browser": "node scripts/verify-sounds-browser.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.57.0",

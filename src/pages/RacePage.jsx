@@ -12,6 +12,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { backend } from "../lib/backend";
 import { createSession, buildPuzzle, gradeAnswer, advanceSession } from "../game/practice";
+import {playGameSound} from "../lib/soundEffects";
 import { speakWord, stopSpeaking } from "../lib/speech";
 import PetArt, { PETS, petLabelFor } from "../components/kingdom/petArt";
 import {
@@ -151,6 +152,7 @@ export default function RacePage() {
     setFeedback(grade);
 
     if (grade.correct) speakWord(word);
+    else playGameSound("wrong");
 
     // The pet is fed by the answer, right or wrong. This is the whole game.
     setRacers((r) => (r ? applyResult(r, grade.correct) : r));

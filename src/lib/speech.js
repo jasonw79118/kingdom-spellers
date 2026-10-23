@@ -32,6 +32,9 @@ import {
 // ---------------------------------------------------------------------------
 // Configuration
 // ---------------------------------------------------------------------------
+import {setSpeechActive} from "./soundEffects";
+let speechRequest=0;
+
 const PREF_KEY = "ks2_voice_pref";
 const SLOW_KEY = "ks2_speak_slow";
 const PROVIDER_KEY = "ks2_tts_provider";
@@ -471,13 +474,14 @@ function playBlob(blob) {
   const url = URL.createObjectURL(blob);
   const audio = new Audio(url);
   currentAudio = { audio, url };
-  audio.onended = () => {
+  audio.onended = audio.onerror = () => {
     if (currentAudio?.url === url) {
       URL.revokeObjectURL(url);
       currentAudio = null;
+      setSpeechActive(false);
     }
   };
-  audio.play().catch(() => {});
+  audio.play().catch(() => {if(currentAudio?.url===url){URL.revokeObjectURL(url);currentAudio=null;setSpeechActive(false);}});
 }
 
 function stopEverything() {
@@ -491,7 +495,9 @@ function stopEverything() {
 }
 
 export function stopSpeaking() {
+  speechRequest++;
   stopEverything();
+  setSpeechActive(false);
 }
 
 // Circuit breaker: if the cloud keeps failing (bad key, out of credits, no
@@ -545,15 +551,20 @@ export function activeProvider() {
 export async function speak(text, { rate } = {}) {
   const clean = String(text || "").trim();
   if (!clean) return;
+  stopSpeaking();
+  const request=speechRequest;
+  setSpeechActive(true);
   const finalRate = rate ?? (getSlowPref() ? 0.6 : 0.95);
 
   if (shouldUseCloud()) {
     try {
       const blob = await getCloudClip(clean, getCloudVoice(), finalRate);
+      if(request!==speechRequest)return;
       resetBreaker();
       playBlob(blob);
       return;
     } catch (err) {
+      if(request!==speechRequest)return;
       const why = friendlyError(err);
       console.warn("Cloud TTS failed, falling back to device voice:", why);
       // An explicit "Cloud" choice shouldn't get permanently disabled out
@@ -566,7 +577,7 @@ export async function speak(text, { rate } = {}) {
   }
 
   const synth = typeof window !== "undefined" ? window.speechSynthesis : null;
-  if (!synth) return;
+  if (!synth) {setSpeechActive(false);return;}
   synth.cancel();
   const utterance = new SpeechSynthesisUtterance(clean);
   const voice = getLocalVoice();
@@ -575,8 +586,10 @@ export async function speak(text, { rate } = {}) {
   utterance.rate = finalRate;
   utterance.pitch = 1.0;
   utterance.volume = 1;
+  utterance.onend=utterance.onerror=()=>{if(request===speechRequest)setSpeechActive(false);};
   setTimeout(() => {
-    try { synth.speak(utterance); } catch { /* iOS restrictions */ }
+    if(request!==speechRequest)return;
+    try { synth.speak(utterance); } catch {setSpeechActive(false);}
   }, 20);
 }
 

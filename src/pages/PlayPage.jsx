@@ -16,6 +16,7 @@ import { buildPracticeSet, masteryLevel } from "../game/mastery";
 import { createSession, buildPuzzle, gradeAnswer, advanceSession, sessionSummary, MODES } from "../game/practice";
 import { goldForWord, REWARDS, XP_PER_WORD } from "../game/kingdom";
 import { speakWord, speakSlow, stopSpeaking, prefetch, getSlowPref, setSlowPref } from "../lib/speech";
+import {playGameSound} from "../lib/soundEffects";
 import VoicePicker from "../components/VoicePicker";
 import { normalizeWord, shuffleArray } from "../lib/utils";
 
@@ -195,11 +196,13 @@ export default function PlayPage() {
     setFeedback(grade);
     missionAttempts.current.push({word,correct:grade.correct});
 
+    let masteredNow=false,savedGold=0;
     // Persist the attempt (this updates mastery server-side).
     try {
       const record=await backend.mastery.recordAttempt(player.id, word, listId, session.mode, grade.correct);
       const level=savedMasteryLevel(record);
-      setNewMastery(level==='mastered' && knownMastery.current[normalizeWord(word)]!=='mastered');
+      masteredNow=level==='mastered' && knownMastery.current[normalizeWord(word)]!=='mastered';
+      setNewMastery(masteredNow);
       knownMastery.current[normalizeWord(word)]=level;
     } catch (err) {
       console.error("recordAttempt failed", err);
@@ -227,6 +230,7 @@ export default function PlayPage() {
           setPlayer(current => ({ ...current, ...saved }));
           setEarnedGold(value => value + gold);
           setEarnedXp(value => value + xp);
+          savedGold=gold;
           setReward({gold,xp});
         } catch (error) {
           setSaveError("Your reward save could not be confirmed. Refresh before continuing.");
@@ -238,6 +242,7 @@ export default function PlayPage() {
 
     }
 
+    playGameSound(grade.correct?"correct":"wrong",{coins:savedGold>0,mastered:masteredNow});
     setTimeout(() => next(grade), grade.correct ? 1100 : 1700);
   };
 
@@ -267,7 +272,7 @@ export default function PlayPage() {
         const correct = missionAttempts.current.filter(attempt => attempt.correct).length;
         let message = correct ? "Your words are helping Greenwood grow." : "Every try is practice. Come back for another gentle quest.";
         if (correct && expansionActionsAvailable) {
-          try { const outcome = await performKingdomAction(statePlayerId, {type:"quest",target:missionId}); message = outcome.replay ? "Your garden is already blooming. You kept your normal practice rewards." : "Quest complete! A flower garden is now growing in your village."; }
+          try { const outcome = await performKingdomAction(statePlayerId, {type:"quest",target:missionId}); if(!outcome.replay)playGameSound("quest"); message = outcome.replay ? "Your garden is already blooming. You kept your normal practice rewards." : "Quest complete! A flower garden is now growing in your village."; }
           catch { message = "Practice completed. Return to your village to collect your garden when saving is available."; }
         }
         setMissionResult({correct,total:updated.total,message});

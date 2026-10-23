@@ -1,0 +1,60 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs/promises';
+import path from 'node:path';
+const {chromium}=await import(process.env.PLAYWRIGHT_MODULE || 'playwright');
+const base=process.env.QA_URL || 'http://127.0.0.1:3110';
+if(!['127.0.0.1','localhost'].includes(new URL(base).hostname))throw Error('Local demo only');
+const out=path.resolve(process.env.QA_OUTPUT || 'qa/sound-evidence');await fs.mkdir(out,{recursive:true});
+const browser=await chromium.launch({channel:'msedge',headless:true});const checks=[],errors=[];let page;
+const check=(name,value)=>{assert.ok(value,name);checks.push(name);console.log('PASS',name);};
+const stored=key=>page.evaluate(k=>JSON.parse(localStorage.getItem('ks2_'+k)),key);
+const starts=()=>page.evaluate(()=>window.qaAudio.starts.length);
+const quiet=()=>page.waitForTimeout(90);
+async function kingdom(){await page.goto(`${base}/#/kingdom/sound-child`,{waitUntil:'domcontentloaded'});await page.locator('.gw').waitFor();}
+async function practice(){await page.goto(`${base}/#/play?playerId=sound-child`,{waitUntil:'domcontentloaded'});await page.getByRole('heading',{name:'Practice',exact:true}).waitFor();await page.getByRole('button',{name:/Practice/}).first().click();await page.locator('.spell-adventure').waitFor();}
+async function type(word){await page.getByRole('button',{name:'Type a word',exact:true}).click();await page.getByLabel('Your spelling',{exact:true}).fill(word);await page.getByRole('button',{name:'Check word',exact:true}).click();}
+try{
+ const context=await browser.newContext({viewport:{width:1440,height:1050},reducedMotion:'reduce'});
+ await context.route('**/*',r=>new URL(r.request().url()).hostname===new URL(base).hostname?r.continue():r.abort());
+ await context.addInitScript(()=>{
+  window.qaAudio={contexts:0,starts:[],cancelled:0};const Native=window.AudioContext;
+  if(Native)window.AudioContext=class extends Native{constructor(...args){super(...args);window.qaAudio.contexts++;const create=this.createOscillator.bind(this);this.createOscillator=()=>{const osc=create();const start=osc.start.bind(osc),stop=osc.stop.bind(osc);osc.start=when=>{window.qaAudio.starts.push({frequency:osc.frequency.value,when});return start(when);};osc.stop=when=>{if(when===undefined)window.qaAudio.cancelled++;return stop(when);};return osc;};}};
+  speechSynthesis.speak=utterance=>{window.qaUtterance=utterance;};
+  if(localStorage.getItem('ks2_session'))return;
+  localStorage.setItem('ks2_users',JSON.stringify([{id:'sound-parent',name:'Synthetic sound review'}]));localStorage.setItem('ks2_session',JSON.stringify({userId:'sound-parent'}));localStorage.setItem('ks2_tts_provider','local');
+  localStorage.setItem('ks2_player_profiles',JSON.stringify([{id:'sound-child',parent_id:'sound-parent',name:'Word explorer',grade_level:1,difficulty:'medium',coins:500,xp:0,avatar:{base:'boy'}}]));
+  localStorage.setItem('ks2_player_progress',JSON.stringify([{player_id:'sound-child',buildings:{cottage:true},unlocked_kingdoms:[1],royal_tests_completed:0}]));
+  localStorage.setItem('ks2_spelling_lists',JSON.stringify([{id:'sound-list',player_id:'sound-child',parent_id:'sound-parent',title:'Sound review words'}]));localStorage.setItem('ks2_spelling_words',JSON.stringify([{id:'sound-word',list_id:'sound-list',word:'cat',normalized_word:'cat',position:0}]));
+ });
+ page=await context.newPage();page.setDefaultTimeout(25000);page.on('pageerror',e=>errors.push(e.message));
+ await kingdom();check('Uses isolated demo backend',await page.evaluate(async()=>(await import('/src/lib/backend.js')).backendMode==='demo'));
+ check('No autoplay or AudioContext on initial load',await page.evaluate(()=>qaAudio.contexts===0&&qaAudio.starts.length===0));
+ // Render every cue as real PCM, independent of the device output and autoplay policy.
+ const rendered=await page.evaluate(async()=>{const {SOUND_CUES,scheduleSound}=await import('/src/lib/soundEffects.js');const results=[];for(const event of Object.keys(SOUND_CUES)){const audio=new OfflineAudioContext(1,44100,44100),gain=audio.createGain();gain.gain.value=.4*.32;gain.connect(audio.destination);scheduleSound(audio,gain,event,{},0);const buffer=await audio.startRendering(),data=buffer.getChannelData(0);let peak=0,energy=0;for(const x of data){peak=Math.max(peak,Math.abs(x));energy+=x*x;}results.push({event,peak,energy});}return results;});
+ for(const r of rendered)check(`${r.event} renders audible, unclipped PCM`,r.peak>.01&&r.peak<.4&&r.energy>0);
+ await fs.writeFile(path.join(out,'pcm-results.json'),JSON.stringify(rendered,null,2));
+ await page.locator('.gw-site').filter({hasText:'Little School'}).click();await quiet();let before=await starts();
+ await page.getByRole('button',{name:/^Clear plot/}).evaluate(el=>{el.click();el.click();});await page.waitForFunction(()=>JSON.parse(localStorage.getItem('ks2_player_progress'))[0].buildings.schoolhouse==='cleared');
+ check('Confirmed clearing plays its three taps once',await starts()-before===3);
+ await quiet();before=await starts();await page.getByRole('button',{name:/^Build ·/}).click();await page.waitForFunction(()=>JSON.parse(localStorage.getItem('ks2_player_progress'))[0].buildings.schoolhouse==='built');check('Confirmed building plays its own sound',await starts()>before);
+ await practice();await quiet();await page.locator('.game-sound-control summary').click();before=await starts();await page.getByRole('button',{name:'Preview sound',exact:true}).click();check('Preview creates actual Web Audio sources',await starts()>before);
+ await page.locator('.game-sound-control summary').click();const stopped=await page.evaluate(()=>qaAudio.cancelled);await page.getByRole('button',{name:/Hear word/}).click();await page.waitForFunction(()=>window.qaUtterance);
+ check('Pronunciation immediately stops existing effects',await page.evaluate(old=>qaAudio.cancelled>old,stopped));before=await starts();const whileSpeaking=await page.evaluate(async()=>{const {playGameSound}=await import('/src/lib/soundEffects.js');return playGameSound('money');});check('Effects stay quiet while a word is spoken',!whileSpeaking&&await starts()===before);
+ const gold=(await stored('player_profiles'))[0].coins;await quiet();before=await starts();await type('cat');await page.getByRole('heading',{name:'Correct!',exact:true}).waitFor();check('Correct spelling and saved money play one combined cue',await starts()-before===5);await page.getByRole('heading',{name:'You followed the word trail!',exact:true}).waitFor();check('Audio never changes the actual reward amount',(await stored('player_profiles'))[0].coins===gold+10);
+ await practice();await quiet();before=await starts();await type('dog');await page.locator('[data-reward-event="word_retry"]').waitFor();check('Wrong spelling has only the gentle retry sound',await starts()-before===2);check('Retry sound grants no money',(await stored('player_profiles'))[0].coins===gold+10);await page.getByRole('heading',{name:'You followed the word trail!',exact:true}).waitFor();
+ await page.locator('.game-sound-control summary').click();await page.getByRole('button',{name:'Mute game sounds',exact:true}).click();check('Mute setting is saved',(await page.evaluate(()=>JSON.parse(localStorage.getItem('ks2_game_sound')))).enabled===false);await page.reload({waitUntil:'domcontentloaded'});await page.getByRole('heading',{name:'Practice',exact:true}).waitFor();check('Mute survives reload',await page.locator('.game-sound-control summary').textContent()==='Sounds off');
+ await page.getByRole('button',{name:/Practice/}).first().click();before=await starts();await type('cat');await page.getByRole('heading',{name:'Correct!',exact:true}).waitFor();check('Muted correct/reward events create no sound sources',await starts()===before);await page.getByRole('heading',{name:'You followed the word trail!',exact:true}).waitFor();
+ await page.locator('.game-sound-control summary').click();await page.getByRole('button',{name:'Turn game sounds on',exact:true}).click();const volume=page.getByLabel(/Effects volume/);await volume.focus();await volume.press('Home');for(let i=0;i<5;i++)await volume.press('ArrowRight');check('Volume slider saves the real preference',(await page.evaluate(()=>JSON.parse(localStorage.getItem('ks2_game_sound')))).volume===.25);
+ await page.setViewportSize({width:375,height:1000});check('Sound settings fit a phone screen',await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));check('Wrapped mobile header contains every account control',await page.evaluate(()=>{const bar=document.querySelector('.topbar').getBoundingClientRect();return [...document.querySelector('.topbar-inner').children].every(el=>el.getBoundingClientRect().bottom<=bar.bottom+1);}));await page.screenshot({path:path.join(out,'mobile-sound-settings.png'),fullPage:true});
+ await page.locator('.game-sound-control summary').click();await practice();await page.evaluate(async()=>{const {localBackend}=await import('/src/lib/localBackend.js');localBackend.mastery.recordAttempt=async()=>{throw Error('Synthetic offline attempt');};});await quiet();before=await starts();await type('cat');await page.getByRole('alert').waitFor();check('Failed attempt plays no success or money sound',await starts()===before);
+ await page.reload({waitUntil:'domcontentloaded'});await page.getByRole('heading',{name:'Practice',exact:true}).waitFor();await page.getByRole('button',{name:/Practice/}).first().click();await page.evaluate(async()=>{const {localBackend}=await import('/src/lib/localBackend.js');localBackend.profiles.update=async()=>{throw Error('Synthetic reward write failure');};});await quiet();before=await starts();const failedGold=(await stored('player_profiles'))[0].coins;await type('cat');await page.getByRole('alert').waitFor();check('Failed reward save is silent and balance stays unchanged',await starts()===before&&(await stored('player_profiles'))[0].coins===failedGold);
+ // Cancelling speech also invalidates the delayed browser voice start.
+ await page.evaluate(async()=>{const speech=await import('/src/lib/speech.js');window.qaUtterance=null;await speech.speakWord('cancelled');speech.stopSpeaking();});await page.waitForTimeout(60);
+ check('Cancelled speech never starts later',await page.evaluate(()=>window.qaUtterance===null));
+ await page.evaluate(async()=>{const speech=await import('/src/lib/speech.js');await speech.speakWord('first');});await page.waitForFunction(()=>window.qaUtterance?.text==='first');await page.evaluate(()=>{window.qaOldUtterance=window.qaUtterance;});await page.evaluate(async()=>{await (await import('/src/lib/speech.js')).speakWord('second');});await page.waitForFunction(()=>window.qaUtterance?.text==='second');await page.evaluate(()=>window.qaOldUtterance.onend());await quiet();
+ check('Old speech callbacks cannot release the new word audio focus',await page.evaluate(async()=>!(await import('/src/lib/soundEffects.js')).playGameSound('money')));
+ await page.evaluate(()=>window.qaUtterance.onend());await quiet();check('Effects resume after current pronunciation ends',await page.evaluate(async()=>(await import('/src/lib/soundEffects.js')).playGameSound('money')));
+ const other=await context.newPage();await other.goto(base,{waitUntil:'domcontentloaded'});await other.evaluate(()=>localStorage.setItem('ks2_game_sound',JSON.stringify({enabled:false,volume:.25})));await page.waitForFunction(()=>document.querySelector('.game-sound-control summary')?.textContent==='Sounds off');check('Mute preference synchronizes across tabs',await page.evaluate(async()=>!(await import('/src/lib/soundEffects.js')).getSoundPreferences().enabled));await other.close();
+ check('No uncaught audio or application errors',errors.length===0);
+}finally{await fs.writeFile(path.join(out,'results.json'),JSON.stringify({checks,errors},null,2));await browser.close();}
+console.log(`${checks.length} sound browser checks passed`);

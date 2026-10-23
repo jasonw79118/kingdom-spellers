@@ -1,3 +1,25 @@
+KINGDOM SPELLERS | GAME AUDIO | 2026-10-23
+
+Branch: feature/game-sounds. Audio changes are local and NOT deployed.
+The earlier approved NPC/academy website remains live and unchanged.
+
+Added 12 original short cues: correct, gentle retry, coin, clear, build,
+upgrade, quest, mastery, rank, region, decor and placement. Success sounds
+follow confirmed saves; replays and failed saves do not announce rewards.
+Device mute, volume and preview live in the top bar. Pronunciation retains
+priority. No new sound assets, service, dependency, secrets or database changes.
+
+176 checks pass: 9 audio policy + 36 audio browser + 56 core rules +
+37 NPC browser + 38 village browser. Real offline PCM is non-silent and
+unclipped for all twelve cues. Both root/subpath builds and release checks pass.
+Details and modified files: design/SOUND_EFFECTS.md.
+Evidence: qa/sound-evidence/. Original localBackend.js edit remains untouched.
+Preview: npm run dev:demo -- --host 127.0.0.1 --port 3110 --strictPort
+URL: http://127.0.0.1:3110/ . Use Sounds on > Preview sound, or play a word.
+Cloud expansion transaction installation remains gated as before.
+
+--- Previous NPC/academy deployment record ---
+
 KINGDOM SPELLERS | NPCs, ACADEMY, REWARDS & DECOR | 2026-10-23
 
 Branch: feature/academy-npcs. Website deployed with owner approval on 2026-10-23.

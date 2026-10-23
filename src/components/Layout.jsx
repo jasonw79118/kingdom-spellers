@@ -1,6 +1,7 @@
 // App shell — top bar + mobile bottom nav + page outlet.
 
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
+import SoundControl from "./SoundControl";
 import { useAuth } from "../context/AuthContext";
 
 const NAV = [
@@ -26,6 +27,7 @@ export default function Layout() {
             <span aria-hidden>👑</span> Kingdom Spellers
           </NavLink>
           <div className="topbar-spacer" />
+          <SoundControl/>
           {user && (
             <>
               <span className="ks-small" style={{ color: "rgba(255,255,255,0.8)" }}>
