@@ -16,95 +16,10 @@ const DIFFICULTIES = [
   { id: "hard", label: "Hard" },
 ];
 
-function AvatarEditor({ value, onChange }) {
-  const set = (key) => (e) => onChange({ ...value, [key]: e.target.value });
-
-  return (
-    <div className="card-flat">
-      <NpcCharacter id="bram" compact dialogue="Choose your own colors, hair and gear below. Your saved adventurer stays yours; a new portrait never replaces your choices."/>
-      <div className="ks-row" style={{ marginBottom: 14 }}>
-        <Avatar config={value} size={88} />
-        <div className="ks-small ks-muted">
-          Customize this player's adventurer. New gear unlocks through gameplay.
-        </div>
-      </div>
-
-      <div className="ks-grid" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))" }}>
-        <div className="field">
-          <label className="label">Base</label>
-          <select className="select" value={value.base} onChange={set("base")}>
-            {AVATAR_OPTIONS.bases.map((b) => (
-              <option key={b.id} value={b.id}>{b.label}</option>
-            ))}
-          </select>
-        </div>
-        <div className="field">
-          <label className="label">Skin tone</label>
-          <select className="select" value={value.skin} onChange={set("skin")}>
-            {AVATAR_OPTIONS.skins.map((s) => (
-              <option key={s.id} value={s.id}>{s.label}</option>
-            ))}
-          </select>
-        </div>
-        <div className="field">
-          <label className="label">Hair style</label>
-          <select className="select" value={value.hair} onChange={set("hair")}>
-            {AVATAR_OPTIONS.hairs.map((h) => (
-              <option key={h.id} value={h.id}>{h.label}</option>
-            ))}
-          </select>
-        </div>
-        <div className="field">
-          <label className="label">Hair color</label>
-          <select className="select" value={value.hairColor} onChange={set("hairColor")}>
-            {AVATAR_OPTIONS.hairColors.map((h) => (
-              <option key={h.id} value={h.id}>{h.label}</option>
-            ))}
-          </select>
-        </div>
-        <div className="field">
-          <label className="label">Tunic</label>
-          <select className="select" value={value.tunic} onChange={set("tunic")}>
-            {AVATAR_OPTIONS.tunics.map((t) => (
-              <option key={t.id} value={t.id}>{t.label}</option>
-            ))}
-          </select>
-        </div>
-        <div className="field">
-          <label className="label">Cape</label>
-          <select className="select" value={value.cape || ""} onChange={(e) => onChange({ ...value, cape: e.target.value || null })}>
-            {AVATAR_OPTIONS.capes.map((c) => (
-              <option key={c.id || "none"} value={c.id || ""}>{c.label}</option>
-            ))}
-          </select>
-        </div>
-        <div className="field">
-          <label className="label">Shield</label>
-          <select className="select" value={value.shield || ""} onChange={(e) => onChange({ ...value, shield: e.target.value || null })}>
-            {AVATAR_OPTIONS.shields.map((s) => (
-              <option key={s.id || "none"} value={s.id || ""}>{s.label}</option>
-            ))}
-          </select>
-        </div>
-        <div className="field">
-          <label className="label">Crown</label>
-          <select className="select" value={value.crown || ""} onChange={(e) => onChange({ ...value, crown: e.target.value || null })}>
-            {AVATAR_OPTIONS.crowns.map((c) => (
-              <option key={c.id || "none"} value={c.id || ""}>{c.label}</option>
-            ))}
-          </select>
-        </div>
-        <div className="field">
-          <label className="label">Companion</label>
-          <select className="select" value={value.companion || ""} onChange={(e) => onChange({ ...value, companion: e.target.value || null })}>
-            {AVATAR_OPTIONS.companions.map((c) => (
-              <option key={c.id || "none"} value={c.id || ""}>{c.label}</option>
-            ))}
-          </select>
-        </div>
-      </div>
-    </div>
-  );
+function AvatarEditor({value,onChange}){
+ const select=(key,title,options)=><div className="field" key={key}><label className="label" htmlFor={'avatar-'+key}>{title}</label><select className="select" id={'avatar-'+key} value={value[key]||''} onChange={e=>onChange({...value,[key]:e.target.value||null})}>{!options.some(o=>(o.id||'')===(value[key]||''))&&<option value={value[key]}>Saved choice</option>}{options.map(o=><option key={o.id||'none'} value={o.id||''}>{o.label}</option>)}</select></div>;
+ const palette=(key,title,options)=>{const selected=options.find(o=>o.id===value[key]);return <fieldset className="avatar-palette" key={key}><legend>{title}</legend><div className="avatar-swatches">{options.map(o=><button type="button" key={o.id} aria-label={o.label} title={o.label} aria-pressed={value[key]===o.id} onClick={()=>onChange({...value,[key]:o.id})}><span style={{background:o.id}}>{value[key]===o.id?'✓':''}</span></button>)}</div><p className="avatar-color-name">{selected?.label || 'Your saved custom color'}</p></fieldset>;};
+ return <section className="avatar-editor" aria-label="Adventurer wardrobe"><header className="avatar-editor-intro"><span className="gw-eyebrow">A HERO THAT FEELS LIKE YOU</span><h3>Your storybook adventurer</h3><p>Choose a look, mix your colors, and bring your own character into the kingdom.</p></header><div className="avatar-wardrobe"><div className="avatar-dressing-room"><Avatar config={value} size={240} presentation="full"/><strong>Your adventurer</strong></div><div className="avatar-options"><div className="avatar-choice-row">{select('base','Adventurer',AVATAR_OPTIONS.bases)}{select('hair','Hair style',AVATAR_OPTIONS.hairs)}</div>{palette('skin','Skin tone',AVATAR_OPTIONS.skins)}{palette('hairColor','Hair color',AVATAR_OPTIONS.hairColors)}{palette('tunic','Outfit color',AVATAR_OPTIONS.tunics)}<div className="avatar-gear"><h4>Your travelling gear</h4><div className="avatar-choice-row">{select('cape','Cape',AVATAR_OPTIONS.capes)}{select('shield','Shield',AVATAR_OPTIONS.shields)}</div><div className="avatar-choice-row">{select('crown','Crown',AVATAR_OPTIONS.crowns)}{select('companion','Companion',AVATAR_OPTIONS.companions)}</div></div></div></div><div className="avatar-editor-footer">Appearance changes are free. Save the player below to keep your choices; spelling progress and rank stay the same.</div><NpcCharacter id="bram" compact dialogue="Your colors, hair and travelling gear make this adventurer yours. Try a few looks, then save the player when you are happy."/></section>;
 }
 
 const emptyForm = {

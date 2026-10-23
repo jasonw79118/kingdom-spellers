@@ -1,3 +1,31 @@
+KINGDOM SPELLERS | PAINTED PLAYER AVATARS | 2026-10-23
+
+Branch: feature/painted-avatars. This avatar upgrade is local and NOT deployed.
+The prior approved game-sound and NPC/academy release remains live.
+
+Delivered: twelve painted layers derived from the supplied avatar concept sheet;
+two bases, five hairstyles, tintable cape, wooden/knight shields and two crowns.
+All existing skin/hair/outfit colors, gear, companions, ranks and saved IDs stay
+intact. New wardrobe: full-body preview, labelled selectors and 44px swatches.
+Compact painted portraits are shared across the app and active academy header.
+WebP -> PNG -> original configurable SVG fallback protects missing art.
+No profile rewrite on opening; no charges, progress reset or schema migration.
+
+196 checks pass: 56 core + 6 avatar rules + 23 avatar browser + 37 NPC browser
++ 36 sound browser + 38 village browser. Root/subpath builds and release checks
+pass; existing chunk-size warning remains. Original localBackend.js user edit
+is unchanged and excluded from the avatar commit.
+
+Implementation and decisions: design/PAINTED_AVATARS.md
+Exact image_gen prompts, final sources and assets: design/AVATAR_ART_MANIFEST.json
+Screenshots and results: qa/avatar-evidence/
+Changed files: design/AVATAR_CHANGED_FILES.md
+Preview: http://127.0.0.1:3110/ (local demo; edit a disposable player).
+Run: npm run test:avatars; npm run test:avatars:browser; npm test.
+Cloud transaction gates remain unchanged. No new live deployment performed.
+
+--- Previous sound/NPC deployment records ---
+
 KINGDOM SPELLERS | GAME AUDIO | 2026-10-23
 
 Branch: feature/game-sounds. Website deployed with owner approval on 2026-10-23.

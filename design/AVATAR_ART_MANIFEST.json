@@ -1,0 +1,214 @@
+{
+  "tool": "built-in image_gen",
+  "processing": "Visible alpha bounds crop, resize and compression; masks/tints are runtime SVG composition",
+  "reference": "KingdomSpellers_NPC_Rewards_Decor_Pack/assets/concept/14_prior_avatar_customization_reference.png",
+  "assets": [
+    {
+      "id": "boy",
+      "path": "C:\\Users\\jason\\.codex\\generated_images\\01a16037-1ef2-7432-8d56-e189a9979220\\exec-f727664d-8e3a-49fc-8596-80889795487e.png",
+      "prompt": "Use case: illustration-story. Production modular player avatar BASE for Kingdom Spellers. The supplied avatar concept sheet is a STYLE reference only, not an edit target. ONE friendly fictional boy child adventurer in softly painted polished storybook fantasy style, expressive large warm brown eyes and gentle smile, rounded child proportions like reference, NOT vector or flat icon. FRONT FACING, symmetric relaxed standing pose, full body head to boots. IMPORTANT modular base: completely BALD smooth head, no hair, no hat, no cape, crown, shield, pet, weapon or held props; separate hair and equipment will be layered by the game. Light warm tan skin matching approximately #f2c9a0. Wear a medium neutral GRAY long-sleeved academy coat/tunic with very subtle warm gold edging and brown leather belt, charcoal trousers, brown leather gloves and detailed brown adventure boots. Gray coat cloth is recolored by code; keep it truly neutral gray and clearly bounded. Hands at sides at hip height, gloved, no exposed hand skin. Large head occupies approximately top 36 percent of figure, balanced approachable proportions. Straight-on face. Symmetric readable silhouette, warm top-left light, painterly texture, soft shadows. Isolated on genuine transparent alpha, generous empty margins. No ground, scene, border, labels, lettering, text, extra figures or props. Whole figure entirely in frame.",
+      "cleanup_prompt": "Edit target: the supplied single bald child adventurer base sprite. Preserve the entire character, face, pose, skin, neutral gray coat, brown gloves and boots and gold trim exactly. Remove ALL surrounding brown glow, mist, vignette, haze, ambient background and shadow outside the silhouette. Output a clean tightly isolated production game sprite on true transparent alpha, with fully clear pixels outside the actual character. No environment or background lighting halo. Keep the whole head and both boots, no crop, no added hair or equipment. Maintain the soft painted fantasy storybook appearance.",
+      "asset": "base-boy",
+      "original_visible_bounds": [
+        224,
+        22,
+        800,
+        1494
+      ],
+      "size": [
+        321,
+        820
+      ],
+      "bytes": 75476
+    },
+    {
+      "id": "girl",
+      "path": "C:\\Users\\jason\\.codex\\generated_images\\01a16037-1ef2-7432-8d56-e189a9979220\\exec-a3a7c977-ef95-4889-a548-18d030c9190e.png",
+      "prompt": "Use case: illustration-story. Production modular player avatar BASE for Kingdom Spellers. The supplied avatar concept sheet is a STYLE reference only, not an edit target. ONE friendly fictional girl child adventurer in softly painted polished storybook fantasy style, expressive large warm brown eyes and gentle smile, rounded child proportions like reference, NOT vector or flat icon. FRONT FACING, symmetric relaxed standing pose, full body head to boots. IMPORTANT modular base: completely BALD smooth head, no hair, no hat, no cape, crown, shield, pet, weapon or held props; separate hair and equipment will be layered by the game. Light warm tan skin matching approximately #f2c9a0. Wear a medium neutral GRAY long-sleeved academy coat/tunic with very subtle warm gold edging and brown leather belt, charcoal trousers, brown leather gloves and detailed brown adventure boots. Gray coat cloth is recolored by code; keep it truly neutral gray and clearly bounded. Hands at sides at hip height, gloved, no exposed hand skin. Large head occupies approximately top 36 percent of figure, balanced approachable proportions. Straight-on face. Symmetric readable silhouette, warm top-left light, painterly texture, soft shadows. Isolated on genuine transparent alpha, generous empty margins. No ground, scene, border, labels, lettering, text, extra figures or props. Whole figure entirely in frame.",
+      "cleanup_prompt": "Edit target: the supplied single bald child adventurer base sprite. Preserve the entire character, face, pose, skin, neutral gray coat, brown gloves and boots and gold trim exactly. Remove ALL surrounding brown glow, mist, vignette, haze, ambient background and shadow outside the silhouette. Output a clean tightly isolated production game sprite on true transparent alpha, with fully clear pixels outside the actual character. No environment or background lighting halo. Keep the whole head and both boots, no crop, no added hair or equipment. Maintain the soft painted fantasy storybook appearance.",
+      "asset": "base-girl",
+      "original_visible_bounds": [
+        244,
+        30,
+        790,
+        1485
+      ],
+      "size": [
+        308,
+        820
+      ],
+      "bytes": 70948
+    },
+    {
+      "id": "hair-short",
+      "path": "C:\\Users\\jason\\.codex\\generated_images\\01a16037-1ef2-7432-8d56-e189a9979220\\exec-ab342129-2ef7-4511-850d-35afdfaa4bb4.png",
+      "prompt": "Use case: illustration-story. ONE production modular HAIR SPRITE for a child fantasy avatar, like the supplied Kingdom Spellers avatar concept reference. Short tousled layered hair, slightly swept fringe, small sideburns. Only the top cap and fringe with side wisps; no face or head. Front-facing view, softly painted warm storybook rendering, detailed individual hair locks and soft highlights. Render hair in NEUTRAL SILVER-GRAY midtones with dark gray shadows and light gray highlights, no colored accessories, so game code can tint it to saved hair colors. Isolated complete hairstyle only, generous transparent margins. NO person, skin, eyes, face, head, neck, mannequin, clothes, skull, labels, words, backdrop or frame. This is a wig-shaped game art layer, not a character portrait. Transparent alpha everywhere outside the hair and through the face opening. Keep whole hairstyle in frame.",
+      "cleanup_prompt": "Edit target: the supplied single short silver-gray hair sprite. Preserve the actual hairstyle, painted hair texture, fringe and flyaway strands. REMOVE ALL surrounding gray glow, haze, fog, vignette and background outside the physical hair. Remove haze from the face opening too; it must be completely transparent. Output ONLY the isolated hair strands with genuine transparent alpha outside and below the hairstyle. No face, head, mannequin, scene or new details. Preserve full hair silhouette and all tips in frame. Clean modular game asset with no lighting halo.",
+      "asset": "hair-short",
+      "original_visible_bounds": [
+        228,
+        12,
+        1329,
+        982
+      ],
+      "size": [
+        640,
+        564
+      ],
+      "bytes": 105122
+    },
+    {
+      "id": "hair-long",
+      "path": "C:\\Users\\jason\\.codex\\generated_images\\01a16037-1ef2-7432-8d56-e189a9979220\\exec-fa1e9050-4713-4490-adb3-a2ce94122198.png",
+      "prompt": "Use case: illustration-story. ONE production modular HAIR SPRITE for a child fantasy avatar, like the supplied Kingdom Spellers avatar concept reference. Long softly wavy shoulder-length hair with a gentle swept fringe, side locks frame a COMPLETELY TRANSPARENT oval face opening. The face opening must be a true alpha hole, not gray or white. Front-facing view, softly painted warm storybook rendering, detailed individual hair locks and soft highlights. Render hair in NEUTRAL SILVER-GRAY midtones with dark gray shadows and light gray highlights, no colored accessories, so game code can tint it to saved hair colors. Isolated complete hairstyle only, generous transparent margins. NO person, skin, eyes, face, head, neck, mannequin, clothes, skull, labels, words, backdrop or frame. This is a wig-shaped game art layer, not a character portrait. Transparent alpha everywhere outside the hair and through the face opening. Keep whole hairstyle in frame.",
+      "asset": "hair-long",
+      "original_visible_bounds": [
+        11,
+        3,
+        1309,
+        1193
+      ],
+      "size": [
+        640,
+        587
+      ],
+      "bytes": 98038
+    },
+    {
+      "id": "hair-curly",
+      "path": "C:\\Users\\jason\\.codex\\generated_images\\01a16037-1ef2-7432-8d56-e189a9979220\\exec-d0b53968-ebbf-4f2a-9d07-6bdea3b4e5fa.png",
+      "prompt": "Use case: illustration-story. ONE production modular HAIR SPRITE for a child fantasy avatar, like the supplied Kingdom Spellers avatar concept reference. Full lively rounded springy curls, soft textured afro-like crown and side curls framing a COMPLETELY TRANSPARENT oval face opening. The face opening must be a true alpha hole, not gray or white. Front-facing view, softly painted warm storybook rendering, detailed individual hair locks and soft highlights. Render hair in NEUTRAL SILVER-GRAY midtones with dark gray shadows and light gray highlights, no colored accessories, so game code can tint it to saved hair colors. Isolated complete hairstyle only, generous transparent margins. NO person, skin, eyes, face, head, neck, mannequin, clothes, skull, labels, words, backdrop or frame. This is a wig-shaped game art layer, not a character portrait. Transparent alpha everywhere outside the hair and through the face opening. Keep whole hairstyle in frame.",
+      "asset": "hair-curly",
+      "original_visible_bounds": [
+        22,
+        45,
+        1299,
+        1154
+      ],
+      "size": [
+        640,
+        556
+      ],
+      "bytes": 128174
+    },
+    {
+      "id": "hair-ponytail",
+      "path": "C:\\Users\\jason\\.codex\\generated_images\\01a16037-1ef2-7432-8d56-e189a9979220\\exec-f0c743a6-e5bf-44fd-89df-c3a67bb13436.png",
+      "prompt": "Use case: illustration-story. ONE production modular HAIR SPRITE for a child fantasy avatar, like the supplied Kingdom Spellers avatar concept reference. Practical high ponytail tied with a plain gray tie, visible ponytail curves down on the RIGHT side, swept fringe and side wisps frame a COMPLETELY TRANSPARENT oval face opening. True alpha hole for face. Front-facing view, softly painted warm storybook rendering, detailed individual hair locks and soft highlights. Render hair in NEUTRAL SILVER-GRAY midtones with dark gray shadows and light gray highlights, no colored accessories, so game code can tint it to saved hair colors. Isolated complete hairstyle only, generous transparent margins. NO person, skin, eyes, face, head, neck, mannequin, clothes, skull, labels, words, backdrop or frame. This is a wig-shaped game art layer, not a character portrait. Transparent alpha everywhere outside the hair and through the face opening. Keep whole hairstyle in frame.",
+      "asset": "hair-ponytail",
+      "original_visible_bounds": [
+        88,
+        7,
+        1257,
+        1193
+      ],
+      "size": [
+        640,
+        649
+      ],
+      "bytes": 133344
+    },
+    {
+      "id": "hair-bun",
+      "path": "C:\\Users\\jason\\.codex\\generated_images\\01a16037-1ef2-7432-8d56-e189a9979220\\exec-546afb04-a71e-48ab-b06f-c1e864d3180f.png",
+      "prompt": "Use case: illustration-story. ONE production modular HAIR SPRITE for a child fantasy avatar, like the supplied Kingdom Spellers avatar concept reference. A neat high round bun on top, softly swept front fringe and delicate temple wisps framing a COMPLETELY TRANSPARENT oval face opening. True alpha face opening, not a head. Front-facing view, softly painted warm storybook rendering, detailed individual hair locks and soft highlights. Render hair in NEUTRAL SILVER-GRAY midtones with dark gray shadows and light gray highlights, no colored accessories, so game code can tint it to saved hair colors. Isolated complete hairstyle only, generous transparent margins. NO person, skin, eyes, face, head, neck, mannequin, clothes, skull, labels, words, backdrop or frame. This is a wig-shaped game art layer, not a character portrait. Transparent alpha everywhere outside the hair and through the face opening. Keep whole hairstyle in frame.",
+      "asset": "hair-bun",
+      "original_visible_bounds": [
+        232,
+        0,
+        1099,
+        1198
+      ],
+      "size": [
+        593,
+        820
+      ],
+      "bytes": 170422
+    },
+    {
+      "id": "cape",
+      "path": "C:\\Users\\jason\\.codex\\generated_images\\01a16037-1ef2-7432-8d56-e189a9979220\\exec-350006de-8da4-4486-a899-9e4408724f2e.png",
+      "prompt": "Use case: illustration-story. ONE clean production EQUIPMENT SPRITE for Kingdom Spellers avatar, matching the supplied avatar customization concept sheet. One small child-sized fantasy travelling cape ONLY, spread open as though hanging on shoulders viewed directly from FRONT, no wearer. Neutral medium gray fabric with soft silver-gray highlights, gently flowing heavy cloth folds, high curved neck opening, split open center so avatar body can stand in front. Simple gray clasp. Entire cape monochrome gray for runtime tinting. Rich warm hand-painted storybook fantasy rendering, charming proportions, clear readable silhouette, three-quarter material shading but front-on overall orientation. Single isolated object, entire item in frame with transparent padding. Genuine transparent alpha background and openings, no text, labels, extra items, people, hands, mannequin, ground or frames.",
+      "asset": "cape",
+      "original_visible_bounds": [
+        31,
+        87,
+        1282,
+        1117
+      ],
+      "size": [
+        640,
+        527
+      ],
+      "bytes": 39870
+    },
+    {
+      "id": "shield-wood",
+      "path": "C:\\Users\\jason\\.codex\\generated_images\\01a16037-1ef2-7432-8d56-e189a9979220\\exec-4e294cca-532b-4725-ad91-8847db3b1b51.png",
+      "prompt": "Use case: illustration-story. ONE clean production EQUIPMENT SPRITE for Kingdom Spellers avatar, matching the supplied avatar customization concept sheet. One small friendly child's wooden medieval shield, warm painted oak planks, simple brass rim and central round brass boss, front view slightly angled, no weapons or battle damage, whole shield. Rich warm hand-painted storybook fantasy rendering, charming proportions, clear readable silhouette, three-quarter material shading but front-on overall orientation. Single isolated object, entire item in frame with transparent padding. Genuine transparent alpha background and openings, no text, labels, extra items, people, hands, mannequin, ground or frames.",
+      "asset": "shield-wood",
+      "original_visible_bounds": [
+        134,
+        52,
+        1125,
+        1157
+      ],
+      "size": [
+        640,
+        714
+      ],
+      "bytes": 124362
+    },
+    {
+      "id": "shield-knight",
+      "path": "C:\\Users\\jason\\.codex\\generated_images\\01a16037-1ef2-7432-8d56-e189a9979220\\exec-d0f2ce7a-6de5-4b0d-a589-646ef53c6893.png",
+      "prompt": "Use case: illustration-story. ONE clean production EQUIPMENT SPRITE for Kingdom Spellers avatar, matching the supplied avatar customization concept sheet. One small medieval knight kite shield, polished soft silver rim, royal blue enamel face with a gold book-and-star heraldic emblem, front view slightly angled, whole shield. Rich warm hand-painted storybook fantasy rendering, charming proportions, clear readable silhouette, three-quarter material shading but front-on overall orientation. Single isolated object, entire item in frame with transparent padding. Genuine transparent alpha background and openings, no text, labels, extra items, people, hands, mannequin, ground or frames.",
+      "asset": "shield-knight",
+      "original_visible_bounds": [
+        143,
+        46,
+        1027,
+        1290
+      ],
+      "size": [
+        583,
+        820
+      ],
+      "bytes": 119942
+    },
+    {
+      "id": "crown-brass",
+      "path": "C:\\Users\\jason\\.codex\\generated_images\\01a16037-1ef2-7432-8d56-e189a9979220\\exec-1e6069a4-8a24-4a74-ba46-ee270eac9f9f.png",
+      "prompt": "Use case: illustration-story. ONE clean production EQUIPMENT SPRITE for Kingdom Spellers avatar, matching the supplied avatar customization concept sheet. One modest small brass circlet/crown with three short rounded points and subtle hammered metal texture, front view, open center, no head, simple apprentice royal accessory. Rich warm hand-painted storybook fantasy rendering, charming proportions, clear readable silhouette, three-quarter material shading but front-on overall orientation. Single isolated object, entire item in frame with transparent padding. Genuine transparent alpha background and openings, no text, labels, extra items, people, hands, mannequin, ground or frames.",
+      "asset": "crown-brass",
+      "original_visible_bounds": [
+        32,
+        150,
+        1504,
+        872
+      ],
+      "size": [
+        640,
+        314
+      ],
+      "bytes": 51762
+    },
+    {
+      "id": "crown-royal",
+      "path": "C:\\Users\\jason\\.codex\\generated_images\\01a16037-1ef2-7432-8d56-e189a9979220\\exec-90b5c532-5bd9-4f60-83de-c566156e7d43.png",
+      "prompt": "Use case: illustration-story. ONE clean production EQUIPMENT SPRITE for Kingdom Spellers avatar, matching the supplied avatar customization concept sheet. One elegant small royal gold crown with five points and sapphire blue inset gems, softly painted highlights, front view, open center, no head, friendly storybook royal accessory. Rich warm hand-painted storybook fantasy rendering, charming proportions, clear readable silhouette, three-quarter material shading but front-on overall orientation. Single isolated object, entire item in frame with transparent padding. Genuine transparent alpha background and openings, no text, labels, extra items, people, hands, mannequin, ground or frames.",
+      "asset": "crown-royal",
+      "original_visible_bounds": [
+        50,
+        50,
+        1487,
+        960
+      ],
+      "size": [
+        640,
+        405
+      ],
+      "bytes": 68476
+    }
+  ]
+}

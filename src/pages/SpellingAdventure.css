@@ -6,3 +6,5 @@
 @media(prefers-reduced-motion:reduce){.spell-adventure *{scroll-behavior:auto!important;animation:none!important;transition:none!important}}
 
 .spell-heading h1{color:#fff6d9}.spell-welcome h2{color:#fff6d9}
+
+.spell-player-hud{display:flex;align-items:center;gap:10px;flex-shrink:0}.spell-player-hud .avatar{filter:drop-shadow(0 2px 4px #173d3340)}@media(max-width:600px){.spell-player-hud{flex-direction:column;gap:5px}.spell-player-hud>.avatar{width:42px;height:42px}}

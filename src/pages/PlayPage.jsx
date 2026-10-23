@@ -418,7 +418,7 @@ export default function PlayPage() {
 
   return (
     <div className="spell-adventure">
-      <header className="spell-heading"><div><span className="spell-eyebrow">GREENWOOD ACADEMY · {session.mode === "test" ? "ROYAL TEST" : "WORD TRAIL"}</span><h1>{session.mode === "test" ? "The royal spelling challenge" : "Your words bring the kingdom to life"}</h1></div><span className="spell-satchel" aria-label="Your gold">Gold {player.coins || 0}{earnedGold > 0 && <small>+{earnedGold} this adventure</small>}</span></header>
+      <header className="spell-heading"><div><span className="spell-eyebrow">GREENWOOD ACADEMY · {session.mode === "test" ? "ROYAL TEST" : "WORD TRAIL"}</span><h1>{session.mode === "test" ? "The royal spelling challenge" : "Your words bring the kingdom to life"}</h1></div><div className="spell-player-hud"><Avatar config={player.avatar} size={56}/><span className="spell-satchel" aria-label="Your gold">Gold {player.coins || 0}{earnedGold > 0 && <small>+{earnedGold} this adventure</small>}</span></div></header>
       <div className="spell-hud ks-spread">
         <span className="badge">Word {Math.min(session.index + 1, session.total)} of {session.total}</span>
 

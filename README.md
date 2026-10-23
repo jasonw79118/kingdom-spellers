@@ -160,7 +160,7 @@ vars. No component code changes are needed.
 │   │   └── utils.js          # XP/levels, shuffle, weighted sampling, etc.
 │   ├── components/
 │   │   ├── Layout.jsx        # Top bar + mobile bottom nav
-│   │   ├── Avatar.jsx        # Customizable SVG adventurer
+│   │   ├── Avatar.jsx        # Layered painted adventurer + configurable SVG fallback
 │   │   ├── PlayerCard.jsx    # Child profile card
 │   │   ├── WordCard.jsx      # Word + definition + text-to-speech
 │   │   ├── StatPill.jsx      # Small stat display
@@ -567,3 +567,19 @@ do not represent the undeployed function as a secured production economy.
 Real-account, cross-device, audio/camera and deployment checks remain release
 gates. No cloud changes or deployment were made. Other regions remain the
 original working regions pending Greenwood visual acceptance.
+
+
+## Painted player avatars - 2026-10-23 (local feature)
+
+The avatar concept sheet now has a modular painted implementation: two bases,
+all five saved hairstyles, the original color palettes, capes, shields and crowns.
+Saved appearance values and progress remain intact. The editor provides a full
+wardrobe preview and accessible color swatches; cards and academy use the same
+painted portrait. This supersedes older notes describing painted avatar art as
+future work. This feature is local pending deployment approval.
+
+See [implementation and verification](design/PAINTED_AVATARS.md),
+[art sources and prompts](design/AVATAR_ART_MANIFEST.json), and
+[changed files](design/AVATAR_CHANGED_FILES.md). Run `npm run test:avatars` and
+`npm run test:avatars:browser`; browser scripts require the local demo and Edge/
+Playwright as described in the implementation notes.
