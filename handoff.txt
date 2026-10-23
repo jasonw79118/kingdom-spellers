@@ -1,8 +1,8 @@
 KINGDOM SPELLERS | NPCs, ACADEMY, REWARDS & DECOR | 2026-10-23
 
-Branch: feature/academy-npcs. This feature is NOT deployed.
+Branch: feature/academy-npcs. Website deployed with owner approval on 2026-10-23.
 Earlier Greenwood/spelling changes were published on 2026-10-22; that live
-release is unchanged by this work. No migrations, account resets, production
+release is superseded by this website deployment. No migrations, account resets, production
 permission changes or writes to live child data. Original localBackend.js
 working changes remain untouched and excluded from this feature's commit.
 
@@ -38,4 +38,6 @@ validation of the existing prepared Appwrite transaction function. New cloud
 decor purchases/moves, upgrade and quest claims are not activated. Avatar art
 remains modular SVG; the painted reference board is not substituted for saved
 customization. Extra concept-sheet props and wandering NPCs are future content.
-Do not deploy this feature without the owner's explicit approval.
+Deployment: gh-pages commit 6a4f321; source implementation e8bbb58.
+Verified HTTPS 200 and exact release JS/CSS, academy and all nine sprite assets.
+Cloud function remains uninstalled; no database or backend deployment occurred.
