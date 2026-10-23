@@ -1,6 +1,6 @@
 # Kingdom Spellers game sounds - 2026-10-23
 
-Implemented on feature/game-sounds. This audio update is local; the previously approved NPC/academy release remains live. No deployment, schema, account, currency, mastery-rule or backend permission changes. The existing uncommitted localBackend.js edit is preserved and excluded from the feature commit.
+Implemented on feature/game-sounds. Website deployed with owner approval on 2026-10-23, retaining the previously approved NPC/academy release. No schema, account, currency, mastery-rule or backend permission changes. The existing uncommitted localBackend.js edit is preserved and excluded from the feature commit.
 
 ## Delivered sounds and triggers
 
@@ -37,3 +37,8 @@ Commands: npm run test:sounds; npm run test:sounds:browser; npm test; npm run te
 - handoff.txt and design/SOUND_EFFECTS.md: delivery record and implementation decisions.
 
 Cloud expansion transactions retain their existing installation gate. This update adds presentation only and does not activate cloud decoration purchases, migrations or the prepared transaction function.
+
+
+## Verified website deployment - 2026-10-23
+
+Published the tested build to gh-pages commit `3cc64e2`. Sound implementation `39da1d5` is pushed on feature/game-sounds. Confirmed HTTPS 200, exact index-DAOASySW.js and index-D-vTZnxs.css release references, and the sound preference, Preview sound and Mute game sounds markers in the live JavaScript. No production accounts were used for verification, and no function deployment or migration occurred. Browser autoplay still requires a user gesture; use the top-bar sound preview or a real game action.

@@ -1,7 +1,9 @@
 KINGDOM SPELLERS | GAME AUDIO | 2026-10-23
 
-Branch: feature/game-sounds. Audio changes are local and NOT deployed.
-The earlier approved NPC/academy website remains live and unchanged.
+Branch: feature/game-sounds. Website deployed with owner approval on 2026-10-23.
+This website release includes the previously approved NPC/academy update.
+Deployment: gh-pages 3cc64e2; tested sound implementation 39da1d5.
+Verified HTTPS 200, exact release JS/CSS and sound engine/control markers.
 
 Added 12 original short cues: correct, gentle retry, coin, clear, build,
 upgrade, quest, mastery, rank, region, decor and placement. Success sounds
