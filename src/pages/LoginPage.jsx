@@ -1,8 +1,8 @@
 // Login / sign-up page. Email + password auth via the active backend
-// (Supabase in production, local demo mode when unconfigured).
+// (Appwrite in production, local demo mode when unconfigured).
 
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { backendMode } from "../lib/backend";
 
@@ -119,6 +119,7 @@ export default function LoginPage() {
               {busy ? "Please wait…" : mode === "signin" ? "Sign In" : "Create Account"}
             </button>
           </form>
+          {mode === "signin" && <p className="text-center" style={{ marginBottom: 0 }}><Link to="/forgot-password">Forgot password?</Link></p>}
         </div>
 
         <p className="text-center ks-small ks-muted" style={{ margin: 0 }}>

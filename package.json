@@ -29,7 +29,9 @@
     "test:sounds": "node --test scripts/sounds.test.mjs",
     "test:sounds:browser": "node scripts/verify-sounds-browser.mjs",
     "test:avatars": "node --test scripts/avatars.test.mjs",
-    "test:avatars:browser": "node scripts/verify-avatars-browser.mjs"
+    "test:avatars:browser": "node scripts/verify-avatars-browser.mjs",
+    "test:recovery": "node --test scripts/recovery.test.mjs",
+    "test:recovery:browser": "node scripts/verify-recovery-browser.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.57.0",

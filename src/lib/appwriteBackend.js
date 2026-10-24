@@ -1,3 +1,4 @@
+import { createPasswordRecovery } from "./passwordRecovery.js";
 // Appwrite backend — mirrors the local/Supabase backend interface exactly.
 //
 // Privacy model: every child-owned document (profiles, lists, words, attempts,
@@ -289,6 +290,12 @@ export function createAppwriteBackend() {
 
   return {
     auth: {
+      async requestPasswordReset(email, url) {
+        return createPasswordRecovery(account()).requestPasswordReset(email, url);
+      },
+      async resetPassword(token, password) {
+        return createPasswordRecovery(account()).resetPassword(token, password);
+      },
       async signIn(email, password) {
         try {
           await account().createEmailPasswordSession(email, password);

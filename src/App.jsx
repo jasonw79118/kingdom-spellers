@@ -4,6 +4,7 @@ import { HashRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import Layout from "./components/Layout";
 import LoginPage from "./pages/LoginPage";
+import PasswordRecoveryPage from "./pages/PasswordRecoveryPage";
 import DashboardPage from "./pages/DashboardPage";
 import PlayersPage from "./pages/PlayersPage";
 import ListsPage from "./pages/ListsPage";
@@ -41,6 +42,8 @@ export default function App() {
     <AuthProvider>
       <HashRouter>
         <Routes>
+          <Route path="/forgot-password" element={<PasswordRecoveryPage key="request" />} />
+          <Route path="/reset-password" element={<PasswordRecoveryPage key="reset" reset />} />
           <Route
             path="/login"
             element={
