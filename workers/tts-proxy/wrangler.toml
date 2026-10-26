@@ -11,3 +11,9 @@ compatibility_date = "2026-09-30"
 
 [observability]
 enabled = true
+
+# Existing account-level encrypted secret; the value is never in source.
+[[secrets_store_secrets]]
+binding = "ELEVENLABS_API_KEY"
+store_id = "43a07ab104a3460d862c9bc75350eb52"
+secret_name = "Elevenlabs_API_Key"

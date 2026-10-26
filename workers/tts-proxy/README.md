@@ -4,11 +4,9 @@ Production endpoint: https://kingdom-spellers-tts.jasonw79118.workers.dev
 
 The public endpoint is set in the repository's .env.production so every production browser uses the same service. ElevenLabs credentials belong only in the worker's encrypted ELEVENLABS_API_KEY secret. Local demo mode does not load .env.production. Parent accounts and spelling history are unaffected.
 
-To configure or rotate the server-side key, run from this directory:
+The worker now binds the existing account-level Secrets Store entry `Elevenlabs_API_Key` through the runtime binding `ELEVENLABS_API_KEY`. The store ID and name are declared in wrangler.toml; the value stays in Cloudflare. Secrets Store bindings require asynchronous `.get()` resolution, which the worker performs before calling ElevenLabs. Legacy plain-string secrets remain supported for local development.
 
-    npx wrangler secret put ELEVENLABS_API_KEY
-
-Paste the key into that command's private input, never into chat, source files, command-line arguments or VITE_ configuration. Existing desktop-only Reading voice credentials are not copied automatically to the server. Never commit a real credential.
+To rotate or correct the credential, update the VALUE of the existing `Elevenlabs_API_Key` entry in Cloudflare Secrets Store, retaining its Workers scope and name. Use the full API key from ElevenLabs, starting with `sk_`, not a key identifier or display name. Do not create a Worker secret with the same binding name while the Secrets Store binding is active. Never put the credential into VITE_ variables, source files or chat.
 
 Health check (reveals only whether a secret is configured):
 
@@ -22,4 +20,4 @@ Deploy worker code with:
 
 The worker accepts ElevenLabs requests for short words/definitions, validates input and allowed voices, bounds upstream time, applies a best-effort per-IP rate limit, and returns raw MP3 with CORS for the existing website domains. It rejects unrelated browser origins and Google requests. The client retains its local-voice fallback when cloud delivery fails. No database migration is involved.
 
-Run `npm run test:tts-proxy` from the project root for input validation, custom-domain CORS, missing credentials, upstream isolation and safe failure tests. The local one-time key-entry helper binds only to 127.0.0.1, uses a random access token and same-origin checks, never persists the key, and sends it through stdin to Wrangler's encrypted-secret command. Its code and status live in ignored scratch directories and are not part of the public website.
+Run `npm run test:tts-proxy` from the project root for input validation, custom-domain CORS, missing credentials, upstream isolation and safe failure tests. The earlier one-time key-entry helper has been stopped and is superseded by the existing Secrets Store binding. Update that stored secret directly; no local paste page is required.

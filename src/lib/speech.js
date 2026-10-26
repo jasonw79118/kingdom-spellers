@@ -144,6 +144,7 @@ export async function testCloudKey() {
 
 function friendlyError(err) {
   const msg = String(err?.message || err || "");
+  if (/API key ID used as API key/i.test(msg)) return 'The server has a key ID instead of an ElevenLabs API key. Replace the Cloudflare secret value with the complete API key starting with sk_. Keep the secret name unchanged.';
   if (/Server not configured/i.test(msg)) return 'The shared reading voice has no server key yet. The site owner must configure it in Cloudflare. A key saved in this browser is not used by the shared service.';
   if (/paid_plan_required|free users cannot/i.test(msg)) {
     return "That voice needs a paid ElevenLabs plan. Pick another voice — the list only shows free ones.";

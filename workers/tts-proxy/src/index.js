@@ -99,6 +99,13 @@ function isOriginAllowed(request) {
   return ALLOWED_ORIGINS.has(origin);
 }
 
+// Secrets Store exposes an async binding; local dev/legacy worker secrets are strings.
+export async function resolveVoiceKey(env) {
+  const binding = env.ELEVENLABS_API_KEY;
+  const value = typeof binding === 'string' ? binding : typeof binding?.get === 'function' ? await binding.get() : '';
+  return typeof value === 'string' ? value.trim() : '';
+}
+
 export default {
   async fetch(request, env) {
     const origin = request.headers.get("Origin");
@@ -119,10 +126,16 @@ export default {
       });
     }
 
+    let voiceKey = '';
+    // Reject unrelated origins without reading a secret or spending upstream credits.
+    if (allowed && (request.method === 'POST' || new URL(request.url).pathname === '/health')) {
+      try { voiceKey = await resolveVoiceKey(env); } catch { /* Missing permission or binding is reported as unconfigured. */ }
+    }
+
     if (request.method === "GET") {
       if (new URL(request.url).pathname === "/health") {
         return json(
-          { ok: true, configured: Boolean(env.ELEVENLABS_API_KEY) },
+          { ok: true, configured: Boolean(voiceKey) },
           200,
           allowed ? origin : null
         );
@@ -138,7 +151,7 @@ export default {
       return json({ error: "Origin not allowed." }, 403, null);
     }
 
-    if (!env.ELEVENLABS_API_KEY) {
+    if (!voiceKey) {
       return json(
         { error: "Server not configured. Set the ELEVENLABS_API_KEY secret." },
         500,
@@ -195,7 +208,7 @@ export default {
           method: "POST",
           signal: AbortSignal.timeout(10000),
           headers: {
-            "xi-api-key": env.ELEVENLABS_API_KEY,
+            "xi-api-key": voiceKey,
             "Content-Type": "application/json",
             Accept: "audio/mpeg",
           },
