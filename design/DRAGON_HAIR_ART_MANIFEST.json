@@ -1,0 +1,66 @@
+{
+  "tool": "built-in image_gen",
+  "date": "2026-10-24",
+  "assets": [
+    {
+      "id": "hair-crop",
+      "prompt": "An isolated modular HAIR ONLY sprite, tidy short cropped boy haircut, close neat sides and a small textured fringe. Front view slight top visibility, symmetrical framing to fit a round child avatar head. Silvery grayscale neutral values for runtime recoloring. No head, face, skin, neck, mannequin or accessories. Empty transparent opening where forehead and face would be. Hand-painted detailed storybook watercolor gouache, natural locks, soft outlines, match polished medieval children's adventure game. Hair crown upper half and small temples at sides, no long hair. Centered single cutout, tight composition, transparent background.",
+      "path": "C:\\Users\\jason\\.codex\\generated_images\\01a16037-1ef2-7432-8d56-e189a9979220\\exec-0aee9f14-d808-4b5e-85fb-58caed005d63.png",
+      "asset": "C:\\Users\\jason\\Kingdom-Spellers\\public\\assets\\avatars\\painted-v1\\hair-crop.webp",
+      "size": [
+        1312,
+        1199
+      ]
+    },
+    {
+      "id": "hair-quiff",
+      "prompt": "An isolated modular HAIR ONLY sprite, short boy haircut with a swept upward quiff, neat short sides, playful adventurous silhouette. Front view, symmetrical framing to fit a round child avatar head. Silvery grayscale neutral values for runtime recoloring. No head, face, skin, neck, mannequin or accessories. Empty transparent opening where forehead and face would be. Hand-painted detailed storybook watercolor gouache, natural locks, soft outlines, polished medieval children's adventure game. Hair crown upper half and small temples at sides, no long hair. Centered single cutout, tight composition, transparent background.",
+      "path": "C:\\Users\\jason\\.codex\\generated_images\\01a16037-1ef2-7432-8d56-e189a9979220\\exec-b8c0cfc5-6349-4d9e-bdfb-d04498165aa5.png",
+      "asset": "C:\\Users\\jason\\Kingdom-Spellers\\public\\assets\\avatars\\painted-v1\\hair-quiff.webp",
+      "size": [
+        1337,
+        1176
+      ]
+    },
+    {
+      "id": "hair-coils",
+      "prompt": "An isolated modular HAIR ONLY sprite, boy's short rounded tightly coiled afro haircut, defined small coiled curls and neat short sides, round compact cap. Front view symmetrical framing to fit a round child avatar head. Silvery grayscale neutral values for runtime recoloring. No head face skin neck mannequin accessories. Empty transparent opening where forehead and face would be. Hand-painted detailed storybook watercolor gouache, soft outlines, polished medieval children's adventure game. Compact rounded crown upper half and short side temples, not shoulder length. Centered single cutout, tight composition, transparent background.",
+      "path": "C:\\Users\\jason\\.codex\\generated_images\\01a16037-1ef2-7432-8d56-e189a9979220\\exec-c9d61b1f-9c27-4b32-a677-3870ab3b5337.png",
+      "asset": "C:\\Users\\jason\\Kingdom-Spellers\\public\\assets\\avatars\\painted-v1\\hair-coils.webp",
+      "size": [
+        1278,
+        1230
+      ]
+    },
+    {
+      "id": "dragon-hatchling",
+      "prompt": "Single original storybook game character cutout: a tiny chubby newly hatched baby dragon, oversized curious eyes, tiny folded wings, stubby horns, short curled tail, sitting and looking at viewer. Emerald green scales, warm cream belly, gold horns, soft rounded snout. Full body including tail and both wings visible with generous empty margin. Hand-painted watercolor and gouache, detailed brushwork, warm magical medieval children's book art, polished premium game asset. Not flat vector, no emoji, no text, no props, no ground or scenery. Centered isolated on genuinely transparent background.",
+      "path": "C:\\Users\\jason\\.codex\\generated_images\\01a16037-1ef2-7432-8d56-e189a9979220\\exec-362221b9-2b72-46a6-a5d8-dc393e28eebf.png",
+      "asset": "C:\\Users\\jason\\Kingdom-Spellers\\public\\assets\\dragons\\hatchling.webp",
+      "size": [
+        1320,
+        1191
+      ]
+    },
+    {
+      "id": "dragon-young",
+      "prompt": "Single original storybook game character cutout: a young playful dragon, same emerald green species with warm cream belly and amber eyes, slightly longer neck, growing gold horns and noticeably bigger unfurled wings, happy seated pose looking at viewer. Emerald green scales, warm cream belly, gold horns, soft rounded snout. Full body including tail and both wings visible with generous empty margin. Hand-painted watercolor and gouache, detailed brushwork, warm magical medieval children's book art, polished premium game asset. Not flat vector, no emoji, no text, no props, no ground or scenery. Centered isolated on genuinely transparent background.",
+      "path": "C:\\Users\\jason\\.codex\\generated_images\\01a16037-1ef2-7432-8d56-e189a9979220\\exec-c01d608f-b7c8-48c8-9721-01af268f580b.png",
+      "asset": "C:\\Users\\jason\\Kingdom-Spellers\\public\\assets\\dragons\\young.webp",
+      "size": [
+        1206,
+        1304
+      ]
+    },
+    {
+      "id": "dragon-guardian",
+      "prompt": "Single original storybook game character cutout: a majestic friendly grown companion dragon, same emerald green species with warm cream belly and amber eyes, elegant gold horns, strong body and broad beautifully featherless dragon wings, proud seated pose looking at viewer, still cuddly and suitable for children. Emerald green scales, warm cream belly, gold horns, soft rounded snout. Full body including tail and both wings visible with generous empty margin. Hand-painted watercolor and gouache, detailed brushwork, warm magical medieval children's book art, polished premium game asset. Not flat vector, no emoji, no text, no props, no ground or scenery. Centered isolated on genuinely transparent background.",
+      "path": "C:\\Users\\jason\\.codex\\generated_images\\01a16037-1ef2-7432-8d56-e189a9979220\\exec-b893d0da-a970-4770-90c9-f2def7f6defa.png",
+      "asset": "C:\\Users\\jason\\Kingdom-Spellers\\public\\assets\\dragons\\guardian.webp",
+      "size": [
+        1223,
+        1286
+      ]
+    }
+  ]
+}

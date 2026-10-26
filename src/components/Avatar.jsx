@@ -1,3 +1,4 @@
+import {companionSprite} from '../game/dragon';
 import {useId,useState} from 'react';
 import {PET_ART} from './kingdom/petArt';
 import LegacyAvatar from './LegacyAvatar';
@@ -11,9 +12,9 @@ function Layer({id,x,y,w,h,onUnavailable,...props}){
 }
 export default function Avatar({config=DEFAULT_AVATAR,size=96,className='',presentation='portrait'}){
  const a=normalizeAvatar(config),uid=useId().replaceAll(':',''),[failed,setFailed]=useState(false);
- const body=BODY[a.base],hair=HAIR[a.hair],full=presentation==='full',skin=skinTables(a.skin),Pet=a.companion?PET_ART[a.companion]:null;
+ const body=BODY[a.base],hair=HAIR[a.hair],full=presentation==='full',skin=skinTables(a.skin),Pet=a.companion?PET_ART[companionSprite(a)]:null;
  const unavailable=()=>setFailed(true),filter=id=>`url(#${uid+id})`,baseId='base-'+a.base;
- if(failed)return <LegacyAvatar config={a} size={size} className={className}/>;
+ if(failed)return <LegacyAvatar config={{...a,hair:['crop','quiff','coils'].includes(a.hair)?'short':a.hair}} size={size} className={className}/>;
  const part=(id,{x,y,w,h},props={})=><Layer key={id} id={id} x={x} y={y} w={w} h={h} {...props} onUnavailable={unavailable}/>;
  return <svg viewBox={full?'0 0 240 320':'60 0 120 120'} width={size} height={full?size*4/3:size} className={`avatar ks-painted-avatar ${full?'avatar-full':'avatar-portrait'} ${className}`} role="img" aria-label="player avatar" data-avatar-base={a.base} data-avatar-hair={a.hair} data-avatar-renderer="painted-v1">
   <title>{a.base==='girl'?'Girl':'Boy'} explorer with {a.hair} hair</title>

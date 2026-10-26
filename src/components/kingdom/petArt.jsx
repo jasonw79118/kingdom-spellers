@@ -258,12 +258,21 @@ export const PET_ART = {
   rabbit: Rabbit,
 };
 
+// Retain saved pet IDs and race statistics while updating their visual identities.
+const dragonBase=import.meta.env.BASE_URL+'assets/dragons/';
+function dragonSprite(form,hue=0){return function DragonSprite(){return <image href={dragonBase+form+'.webp'} x="0" y="0" width="100" height="100" style={{filter:`hue-rotate(${hue}deg)`}}/>;};}
+for(const form of ['hatchling','young','guardian'])PET_ART['dragon-'+form]=dragonSprite(form);
+for(const [id,hue] of [['cat',0],['dog',210],['fox',280],['rabbit',90],['dragon',0]]){
+ PET_ART[id]=dragonSprite('hatchling',hue);
+ for(const form of ['hatchling','young','guardian'])PET_ART['dragon-'+form+'-'+id]=dragonSprite(form,hue);
+}
+
 export const PETS = [
-  { id: "cat", label: "Castle Cat", rarity: "common", speed: 3, blurb: "Quick on their paws" },
-  { id: "dog", label: "Hound Dog", rarity: "common", speed: 3, blurb: "Always first to the gate" },
-  { id: "fox", label: "Forest Fox", rarity: "rare", speed: 4, blurb: "Sly and speedy" },
-  { id: "rabbit", label: "Castle Rabbit", rarity: "rare", speed: 4, blurb: "Hops the length of the kingdom" },
-  { id: "dragon", label: "Baby Dragon", rarity: "epic", speed: 5, blurb: "Breathes fire. Runs faster." },
+  { id: "cat", label: "Moss Dragon", rarity: "common", speed: 3, blurb: "A curious little forest friend" },
+  { id: "dog", label: "Ember Dragon", rarity: "common", speed: 3, blurb: "A warm-hearted explorer" },
+  { id: "fox", label: "Sun Dragon", rarity: "rare", speed: 4, blurb: "Bright and full of energy" },
+  { id: "rabbit", label: "Frost Dragon", rarity: "rare", speed: 4, blurb: "Cool scales, a warm heart" },
+  { id: "dragon", label: "Baby Dragon", rarity: "epic", speed: 5, blurb: "Your emerald adventure companion." },
 ];
 
 export function hasPetArt(id) {
@@ -282,8 +291,8 @@ export function petLabelFor(id) {
  * @param {number} size    pixel size
  * @param {string} label   accessible name; omit for decorative use
  */
-export default function PetArt({ id, size = 64, label, className, style }) {
-  const Art = PET_ART[id];
+export default function PetArt({ id, size = 64, label, className, style, form }) {
+  const Art = PET_ART[form?`dragon-${form}-${id}`:id];
   if (!Art) return null;
   return (
     <svg

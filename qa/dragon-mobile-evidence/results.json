@@ -1,0 +1,37 @@
+{
+  "checks": [
+    "chromium feeding evolves the saved hatchling at five snacks",
+    "chromium exhausted snacks cannot be reused",
+    "chromium feeding preserves currency, XP, unknown avatar fields and other children",
+    "chromium feeding leaves kingdom purchases and test history intact",
+    "chromium village companion shows evolved art",
+    "chromium dragon care fits phone width",
+    "chromium crop hair has a working painted asset",
+    "chromium quiff hair has a working painted asset",
+    "chromium coils hair has a working painted asset",
+    "chromium wardrobe save retains dragon growth",
+    "chromium failed adoption never pretends a companion was saved",
+    "chromium free adoption persists without changing player balance",
+    "chromium a new dragon cannot eat unearned snacks",
+    "chromium delayed cloud speech decodes and starts on the unlocked context",
+    "chromium cached speech waits for asynchronous audio resume",
+    "chromium effects remain audible after cloud speech finishes",
+    "chromium muting game effects does not mute speech",
+    "chromium cancelled cloud requests never speak late",
+    "chromium no uncaught browser errors",
+    "webkit feeding evolves the saved hatchling at five snacks",
+    "webkit exhausted snacks cannot be reused",
+    "webkit feeding preserves currency, XP, unknown avatar fields and other children",
+    "webkit feeding leaves kingdom purchases and test history intact",
+    "webkit village companion shows evolved art",
+    "webkit dragon care fits phone width",
+    "webkit crop hair has a working painted asset",
+    "webkit quiff hair has a working painted asset",
+    "webkit coils hair has a working painted asset",
+    "webkit wardrobe save retains dragon growth",
+    "webkit no uncaught browser errors"
+  ],
+  "limitations": [
+    "webkit build does not expose Web Audio; audio playback requires a real supported device check."
+  ]
+}

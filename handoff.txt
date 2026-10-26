@@ -1,3 +1,6 @@
+2026-10-26 - Mobile audio, short hairstyles and evolving dragons
+See design/MOBILE_AUDIO_DRAGONS.md and qa/dragon-mobile-evidence. Local implementation only; shared ElevenLabs service configuration and a physical iPhone listen-through remain outstanding. User localBackend.js changes are preserved.
+
 KINGDOM SPELLERS | PAINTED PLAYER AVATARS | 2026-10-23
 
 Branch: feature/painted-avatars. This avatar upgrade is local and NOT deployed.

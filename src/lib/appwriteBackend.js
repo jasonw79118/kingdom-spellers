@@ -1,3 +1,4 @@
+import {allDocuments} from "./paginatedDocuments.js";
 import { createPasswordRecovery } from "./passwordRecovery.js";
 // Appwrite backend — mirrors the local/Supabase backend interface exactly.
 //
@@ -376,7 +377,7 @@ export function createAppwriteBackend() {
         // Scope to the signed-in parent — never return another family's kids.
         const { documents } = await db().listDocuments(
           DB_ID, COLLECTIONS.playerProfiles,
-          [Query.equal("parentId", requireParent())], 100
+          [Query.equal("parentId", requireParent()), Query.limit(100)]
         );
         return documents.map(mapProfile);
       },
@@ -726,10 +727,8 @@ export function createAppwriteBackend() {
 
       async list(playerId) {
         await assertOwnsPlayer(db(), playerId);
-        const { documents } = await db().listDocuments(
-          DB_ID, COLLECTIONS.mastery,
-          [Query.equal("playerId", playerId)], 500
-        );
+        const documents = await allDocuments(db(), DB_ID, COLLECTIONS.mastery,
+          [Query.equal("playerId", playerId)]);
         return documents.map(mapMastery);
       },
 

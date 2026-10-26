@@ -2,13 +2,13 @@
 export const AVATAR_OPTIONS={
  bases:[{id:'boy',label:'Boy'},{id:'girl',label:'Girl'}],
  skins:[['#f6d7b8','Light peach'],['#f2c9a0','Warm peach'],['#e0ac7e','Honey'],['#c98d5f','Warm brown'],['#a06a42','Rich brown'],['#7a4c2e','Deep brown']].map(([id,label])=>({id,label})),
- hairs:[['short','Tousled short'],['long','Long waves'],['curly','Soft curls'],['ponytail','Ponytail'],['bun','High bun']].map(([id,label])=>({id,label})),
+ hairs:[['short','Tousled short'],['crop','Neat crop'],['quiff','Swept quiff'],['coils','Short coils'],['long','Long waves'],['curly','Soft curls'],['ponytail','Ponytail'],['bun','High bun']].map(([id,label])=>({id,label})),
  hairColors:[['#2e2018','Espresso'],['#5a3a22','Chestnut'],['#8a5a2e','Oak'],['#c9962e','Golden'],['#d97a4a','Copper'],['#b8b8c0','Silver'],['#7a4c2e','Walnut']].map(([id,label])=>({id,label})),
  tunics:[['#6b5b9e','Royal violet'],['#4a7c59','Forest green'],['#c95a5a','Rose red'],['#6fa8c9','Sky blue'],['#c9962e','Gold'],['#d97a9a','Heather pink']].map(([id,label])=>({id,label})),
  capes:[{id:null,label:'No cape'},{id:'blue',label:'Blue'},{id:'red',label:'Red'},{id:'royal',label:'Royal violet'}],
  shields:[{id:null,label:'No shield'},{id:'wood',label:'Wooden shield'},{id:'knight',label:'Knight shield'}],
  crowns:[{id:null,label:'No crown'},{id:'brass',label:'Brass circlet'},{id:'royal',label:'Royal crown'}],
- companions:[{id:null,label:'No companion'},{id:'cat',label:'Cat'},{id:'dog',label:'Dog'},{id:'fox',label:'Fox'},{id:'rabbit',label:'Rabbit'},{id:'dragon',label:'Dragon'}],
+ companions:[{id:null,label:'No companion'},{id:'cat',label:'Moss dragon'},{id:'dog',label:'Ember dragon'},{id:'fox',label:'Sun dragon'},{id:'rabbit',label:'Frost dragon'},{id:'dragon',label:'Emerald dragon'}],
 };
 export const DEFAULT_AVATAR={base:'boy',skin:'#f2c9a0',hair:'short',hairColor:'#5a3a22',tunic:'#6b5b9e',cape:null,shield:null,crown:null,companion:null};
 const colors=new Set(['skin','hairColor','tunic']);

@@ -1,3 +1,4 @@
+import {dragonForm} from '../game/dragon';
 // Pet Race — practice with your pet on the track.
 //
 // The race is not a separate game with its own rules. The child picks a pet,
@@ -31,6 +32,7 @@ export default function RacePage() {
   const [petState, setPetState] = useState({});
   const [lists, setLists] = useState([]);
   const [listId, setListId] = useState("");
+  const [companionForm,setCompanionForm]=useState('hatchling');
   const [yourPet, setYourPet] = useState("cat");
   const [opponents, setOpponents] = useState(["dog", "fox"]);
 
@@ -55,11 +57,15 @@ export default function RacePage() {
     let alive = true;
     (async () => {
       try {
-        const [prog, allLists] = await Promise.all([
+        const [prog, allLists, profiles] = await Promise.all([
           backend.progress.get(playerId),
           backend.lists.list(playerId),
+          backend.profiles.list(),
         ]);
         if (!alive) return;
+        const avatar=profiles.find(p=>p.id===playerId)?.avatar;
+        setCompanionForm(dragonForm(avatar).id);
+        if(avatar?.companion)setYourPet(avatar.companion);
         setProgress(raceProgress(prog.royal_tests_completed || 0));
         setPetState(prog.pet_state || {});
         const usable = (allLists || []).filter((l) => l.words?.length);
@@ -285,7 +291,7 @@ export default function RacePage() {
                   className={`btn ${active ? "btn-forest" : "btn-ghost"}`}
                   style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 12px" }}
                 >
-                  <PetArt id={p.id} size={40} label={`${p.label} preview`} />
+                  <PetArt id={p.id} form={companionForm} size={40} label={`${p.label} preview`} />
                   <span style={{ textAlign: "left" }}>
                     <span style={{ display: "block", fontWeight: 800 }}>{p.label}</span>
                     <span className="ks-small" style={{ opacity: 0.85 }}>
@@ -370,7 +376,7 @@ export default function RacePage() {
                   <div style={{ fontSize: "0.8rem", fontWeight: 800 }}>
                     {["🥇", "🥈", "🥉"][i] || `${i + 1}.`}
                   </div>
-                  <PetArt id={r.id} size={44} />
+                  <PetArt id={r.id} form={r.isPlayer?companionForm:undefined} size={44} />
                   <div className="ks-small" style={{ fontWeight: 700 }}>
                     {r.pet.label}
                   </div>
@@ -440,7 +446,7 @@ export default function RacePage() {
                     transition: "left .45s cubic-bezier(.34,1.2,.64,1)",
                   }}
                 >
-                  <PetArt id={r.id} size={56} label={`${r.pet.label} racer`} />
+                  <PetArt id={r.id} form={r.isPlayer?companionForm:undefined} size={56} label={`${r.pet.label} racer`} />
                   <span
                     style={{
                       fontSize: "1.3rem",

@@ -1,3 +1,5 @@
+import DragonDen from "../components/DragonDen";
+import {companionSprite} from "../game/dragon";
 // Kingdom screen — spend gold to build, watch prosperity raise your rank,
 // and claim new territories as you grow.
 //
@@ -523,6 +525,7 @@ export default function KingdomPage() {
         </div>
       </div>
 
+      <DragonDen key={player.id} player={player} mastery={mastery} onSaved={(p,records)=>{setPlayer(p);setMastery(records);}} onPractice={()=>navigate(`/play?playerId=${playerId}`)}/>
       {/* hero header */}
       <div className="card ks-row" style={{ gap: 16, flexWrap: "wrap" }}>
         <Avatar config={player.avatar} size={80} />
@@ -597,7 +600,7 @@ export default function KingdomPage() {
                 </button>
               </div>
             ) : kingdom.id === 1 ? (
-              <GreenwoodVillage key={playerId} built={built} gold={gold} busy={busy} companion={player.avatar?.companion}
+              <GreenwoodVillage key={playerId} built={built} gold={gold} busy={busy} companion={companionSprite(player.avatar)}
                 onClear={clearLand} onBuild={build} mastery={mastery} expansionAvailable={expansionActionsAvailable}
                 onUpgrade={(building,level) => applyExpansion({type:"upgrade",target:building.id,level})}
                 onPlace={(target,slot) => applyExpansion({type:"place",target,slot})}
@@ -611,7 +614,7 @@ export default function KingdomPage() {
                   <IsoVillage
                     kingdomId={kingdom.id}
                     built={built}
-                    companion={player?.avatar?.companion}
+                    companion={companionSprite(player?.avatar)}
                     buildMode={buildMode}
                     rank={rank.id}
                     animate={!cinema}

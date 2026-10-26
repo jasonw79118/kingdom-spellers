@@ -32,7 +32,7 @@ import {
 // ---------------------------------------------------------------------------
 // Configuration
 // ---------------------------------------------------------------------------
-import {setSpeechActive} from "./soundEffects";
+import {setSpeechActive,unlockGameAudio,getSharedAudioContext} from "./soundEffects";
 let speechRequest=0;
 
 const PREF_KEY = "ks2_voice_pref";
@@ -310,6 +310,7 @@ async function requestElevenLabs(text, voice, rate) {
   // cleanly rather than with a wandering, expressive delivery.
   const res = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voice}`, {
     method: "POST",
+    signal: AbortSignal.timeout(12000),
     headers: {
       "xi-api-key": getApiKey(),
       "Content-Type": "application/json",
@@ -360,7 +361,7 @@ async function requestGoogle(text, voice, rate) {
   const key = getApiKey();
   const res = await fetch(
     `https://texttospeech.googleapis.com/v1/text:synthesize?key=${encodeURIComponent(key)}`,
-    { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }
+    { method: "POST", signal: AbortSignal.timeout(12000), headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }
   );
   if (!res.ok) {
     let detail = `Google TTS ${res.status}`;
@@ -404,6 +405,7 @@ export function setCloudVoice(id, service = getCloudProvider()) {
 async function requestViaProxy(text, voice, rate) {
   const res = await fetch(getProxyUrl(), {
     method: "POST",
+    signal: AbortSignal.timeout(12000),
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       text,
@@ -468,26 +470,26 @@ export function prefetch(text) {
 // ---------------------------------------------------------------------------
 let currentAudio = null;
 
-function playBlob(blob) {
-  if (typeof window === "undefined") return;
+async function playBlob(blob, request) {
+  const context = getSharedAudioContext();
+  if (!context || context.state !== 'running') throw new Error('Tap Hear word to enable audio on this device.');
+  const buffer = await context.decodeAudioData(await blob.arrayBuffer());
+  if (request !== speechRequest) return;
   stopEverything();
-  const url = URL.createObjectURL(blob);
-  const audio = new Audio(url);
-  currentAudio = { audio, url };
-  audio.onended = audio.onerror = () => {
-    if (currentAudio?.url === url) {
-      URL.revokeObjectURL(url);
-      currentAudio = null;
-      setSpeechActive(false);
-    }
+  const source = context.createBufferSource();
+  source.buffer = buffer;
+  source.connect(context.destination);
+  currentAudio = { source };
+  source.onended = () => {
+    source.disconnect();
+    if (currentAudio?.source === source) { currentAudio = null; setSpeechActive(false); }
   };
-  audio.play().catch(() => {if(currentAudio?.url===url){URL.revokeObjectURL(url);currentAudio=null;setSpeechActive(false);}});
+  source.start();
 }
 
 function stopEverything() {
   if (currentAudio) {
-    currentAudio.audio.pause();
-    URL.revokeObjectURL(currentAudio.url);
+    try { currentAudio.source.stop(); currentAudio.source.disconnect(); } catch { /* already ended */ }
     currentAudio = null;
   }
   const synth = typeof window !== "undefined" ? window.speechSynthesis : null;
@@ -551,6 +553,8 @@ export function activeProvider() {
 export async function speak(text, { rate } = {}) {
   const clean = String(text || "").trim();
   if (!clean) return;
+  // This call runs synchronously inside Hear word / a captured activation gesture.
+  const audioReady=unlockGameAudio();
   stopSpeaking();
   const request=speechRequest;
   setSpeechActive(true);
@@ -558,10 +562,10 @@ export async function speak(text, { rate } = {}) {
 
   if (shouldUseCloud()) {
     try {
-      const blob = await getCloudClip(clean, getCloudVoice(), finalRate);
+      const [blob] = await Promise.all([getCloudClip(clean, getCloudVoice(), finalRate), audioReady]);
       if(request!==speechRequest)return;
       resetBreaker();
-      playBlob(blob);
+      await playBlob(blob, request);
       return;
     } catch (err) {
       if(request!==speechRequest)return;
@@ -587,10 +591,8 @@ export async function speak(text, { rate } = {}) {
   utterance.pitch = 1.0;
   utterance.volume = 1;
   utterance.onend=utterance.onerror=()=>{if(request===speechRequest)setSpeechActive(false);};
-  setTimeout(() => {
-    if(request!==speechRequest)return;
-    try { synth.speak(utterance); } catch {setSpeechActive(false);}
-  }, 20);
+  if(request!==speechRequest)return;
+  try { synth.speak(utterance); } catch {setSpeechActive(false);}
 }
 
 export const RATE = { normal: 0.95, slow: 0.6 };

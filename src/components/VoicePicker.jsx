@@ -239,6 +239,8 @@ export default function VoicePicker() {
         </>
       )}
 
+      {!cloudReady && provider !== PROVIDERS.LOCAL && <p role="status" className="ks-small">This device is using its installed voice. The site needs a shared voice connection to use ElevenLabs on every device; voice settings saved on another computer do not transfer here.</p>}
+
       {tripped && provider !== PROVIDERS.LOCAL && (
         <p className="ks-small" style={{ color: "var(--gold-dark)", fontWeight: 700, margin: 0 }}>
           ⚠ Using the device voice for now — {tripped}

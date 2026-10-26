@@ -1,0 +1,29 @@
+{
+  "checks": [
+    "Uses isolated demo backend",
+    "Saved base and hair use painted layers",
+    "Opening wardrobe does not rewrite any saved avatar",
+    "Wardrobe fits 768px",
+    "Color touch targets are 44px at 768px",
+    "Wardrobe fits 375px",
+    "Color touch targets are 44px at 375px",
+    "Both bases and every saved hairstyle have painted previews",
+    "Editing preview leaves persistent profile unchanged before Save",
+    "All appearance choices persist through the existing save API",
+    "Unknown future avatar fields are preserved",
+    "Appearance does not charge currency or alter XP",
+    "Kingdom purchases, tests and rank inputs are unchanged",
+    "Reloaded wardrobe reflects saved hair and equipment",
+    "Switching children keeps their own saved appearance",
+    "Other child profile is untouched",
+    "Kingdom uses the same saved painted avatar",
+    "PNG fallback retains the painted base after WebP failure",
+    "Total art failure retains the saved configurable fallback",
+    "Academy displays the selected player painted portrait",
+    "Academy portrait and gold fit a phone",
+    "No missing avatar artwork responses",
+    "No uncaught avatar or React errors"
+  ],
+  "errors": [],
+  "missing": []
+}

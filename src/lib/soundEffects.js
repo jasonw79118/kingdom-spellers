@@ -60,14 +60,21 @@ export function scheduleSound(audio,output,event,options={},start=audio.currentT
 }
 export function unlockGameAudio(){
  permission=true;
- if(!preferences.enabled||typeof window==='undefined')return;
+ if(typeof window==='undefined')return Promise.resolve(false);
  try{
+  // Safari otherwise treats Web Audio as ambient audio, silenced by the ring switch.
+  // Request playback only from a real interaction, never at module load.
+  try{if(window.navigator?.audioSession)window.navigator.audioSession.type='playback';}catch{}
   const Audio=window.AudioContext||window.webkitAudioContext;
   if(!Audio)return;
-  if(!context){context=new Audio();master=context.createGain();master.gain.value=preferences.volume*.32;master.connect(context.destination);}
-  if(context.state==='suspended')context.resume().catch(()=>{});
+  if(!context||context.state==='closed'){context=new Audio();master=context.createGain();master.gain.value=preferences.volume*.32;master.connect(context.destination);}
+  if(context.state!=='running')return context.resume().then(()=>context.state==='running').catch(()=>false);
+  return Promise.resolve(true);
  }catch{/* Effects are optional; learning remains usable without audio support. */}
+ return Promise.resolve(false);
 }
+// Speech uses the gesture-unlocked context with its own output, independent of effects mute.
+export function getSharedAudioContext(){return context;}
 export function playGameSound(event,options={}){
  if(!SOUND_CUES[event]||!permission||!preferences.enabled||preferences.volume===0||speechActive||typeof document==='undefined'||document.hidden)return false;
  if(!context||context.state!=='running')return false; // No late/autoplay surprise after a blocked gesture.

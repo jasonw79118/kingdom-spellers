@@ -95,6 +95,9 @@ export default function PlayersPage() {
         avatar: form.avatar,
       };
       if (editId) {
+        const current=(await backend.profiles.list()).find(p=>p.id===editId);
+        if(!current)throw new Error("Your player could not be loaded. Please try again.");
+        payload.avatar={...payload.avatar,dragon:current.avatar?.dragon};
         await backend.profiles.update(editId, payload);
       } else {
         const created = await backend.profiles.create(payload);
