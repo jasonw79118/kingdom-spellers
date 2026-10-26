@@ -55,10 +55,13 @@ export function getProviderPref() {
 
 export function setProviderPref(value) {
   localStorage.setItem(PROVIDER_KEY, value);
+  if(value!==PROVIDERS.LOCAL)resetBreaker();
 }
 
 // A proxy is preferred: it keeps the key server-side. A browser-visible key
 // still works, but anyone can extract it, so we warn in the UI.
+export function isManagedVoiceService() { return Boolean(import.meta.env.VITE_TTS_PROXY); }
+
 export function getProxyUrl() {
   return import.meta.env.VITE_TTS_PROXY || localStorage.getItem("ks2_tts_proxy") || "";
 }
@@ -104,7 +107,7 @@ function envCloudService() {
 }
 
 export function getCloudProvider() {
-  return localStorage.getItem(CLOUD_PROVIDER_KEY) || envCloudService();
+  return isManagedVoiceService() ? envCloudService() : localStorage.getItem(CLOUD_PROVIDER_KEY) || envCloudService();
 }
 
 export function setCloudProvider(id) {
@@ -119,6 +122,13 @@ export function isCloudConfigured() {
 // silently falling back mid-lesson.
 export async function testCloudKey() {
   try {
+    if(isManagedVoiceService()){
+      const healthUrl=new URL(getProxyUrl());healthUrl.pathname='/health';healthUrl.search='';
+      const response=await fetch(healthUrl,{cache:'no-store',signal:AbortSignal.timeout(8000)});
+      if(!response.ok)throw new Error('Could not check the shared voice service.');
+      const health=await response.json();
+      if(!health.configured)throw new Error('Server not configured: add the ElevenLabs key to Cloudflare secret ELEVENLABS_API_KEY. A browser key does not configure the shared service.');
+    }
     await getCloudClip("hello", getCloudVoice(), 0.95, { skipCache: true });
     resetBreaker();
     return { ok: true };
@@ -134,6 +144,7 @@ export async function testCloudKey() {
 
 function friendlyError(err) {
   const msg = String(err?.message || err || "");
+  if (/Server not configured/i.test(msg)) return 'The shared reading voice has no server key yet. The site owner must configure it in Cloudflare. A key saved in this browser is not used by the shared service.';
   if (/paid_plan_required|free users cannot/i.test(msg)) {
     return "That voice needs a paid ElevenLabs plan. Pick another voice — the list only shows free ones.";
   }
@@ -566,7 +577,7 @@ export async function speak(text, { rate } = {}) {
       if(request!==speechRequest)return;
       resetBreaker();
       await playBlob(blob, request);
-      return;
+      return request===speechRequest?{ok:true,provider:'cloud'}:undefined;
     } catch (err) {
       if(request!==speechRequest)return;
       const why = friendlyError(err);
@@ -581,7 +592,7 @@ export async function speak(text, { rate } = {}) {
   }
 
   const synth = typeof window !== "undefined" ? window.speechSynthesis : null;
-  if (!synth) {setSpeechActive(false);return;}
+  if (!synth) {setSpeechActive(false);return {ok:false,provider:'none',error:'This device has no reading voice available.'};}
   synth.cancel();
   const utterance = new SpeechSynthesisUtterance(clean);
   const voice = getLocalVoice();
@@ -592,7 +603,7 @@ export async function speak(text, { rate } = {}) {
   utterance.volume = 1;
   utterance.onend=utterance.onerror=()=>{if(request===speechRequest)setSpeechActive(false);};
   if(request!==speechRequest)return;
-  try { synth.speak(utterance); } catch {setSpeechActive(false);}
+  try { synth.speak(utterance); return {ok:true,provider:'local'}; } catch {setSpeechActive(false);return {ok:false,provider:'none',error:'Could not start the reading voice. Tap Preview again.'};}
 }
 
 export const RATE = { normal: 0.95, slow: 0.6 };

@@ -20,6 +20,7 @@ import {
   getProxyUrl,
   setProxyUrl,
   isCloudConfigured,
+  isManagedVoiceService,
   getSlowPref,
   setSlowPref,
   getLocalVoicePref,
@@ -30,7 +31,6 @@ import {
   speakWord,
   cacheStats,
   cacheClear,
-  activeProvider,
   testCloudKey,
   resetBreaker,
   breakerReason,
@@ -88,9 +88,9 @@ export default function VoicePicker() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [service]);
 
+  const managed = isManagedVoiceService();
   const quality = localVoiceQuality();
   const cloudReady = isCloudConfigured();
-  const usingCloud = provider !== PROVIDERS.LOCAL && cloudReady;
   const tripped = breakerReason();
   const current = SERVICES.find((s) => s.id === service) || SERVICES[0];
 
@@ -116,19 +116,18 @@ export default function VoicePicker() {
 
   const handlePreview = async () => {
     setStatus("…");
-    await speakWord("elephant", { slow });
-    setStatus(`Played “elephant” with the ${usingCloud ? current.name : "device"} voice.`);
+    const result=await speakWord("elephant", { slow });
+    setStatus(!result ? 'Playback cancelled.' : !result.ok ? result.error : result.provider==='cloud' ? 'Reading elephant with ElevenLabs.' : 'Reading elephant with this device voice.');
   };
 
   const handleTest = async () => {
     setBusy(true);
     setStatus("Testing key…");
-    setApiKey(key);
-    setProxyUrl(proxy);
+    if(!managed){setApiKey(key);setProxyUrl(proxy);}
     resetBreaker();
     const res = await testCloudKey();
     setBusy(false);
-    setStatus(res.ok ? "Key works — natural voice is ready." : `Key problem: ${res.error}`);
+    setStatus(res.ok ? "Voice connection works. Preview it to hear the reading voice." : `Voice connection: ${res.error}`);
   };
 
   return (
@@ -187,7 +186,7 @@ export default function VoicePicker() {
       {provider !== PROVIDERS.LOCAL && (
         <>
           <select className="select" value={service} onChange={handleService}>
-            {SERVICES.map((s) => (
+            {SERVICES.filter(s=>!managed||s.id===getCloudProvider()).map((s) => (
               <option key={s.id} value={s.id}>{s.name}</option>
             ))}
           </select>
@@ -256,13 +255,17 @@ export default function VoicePicker() {
           <span className="ks-small" style={{ fontWeight: 700 }}>Slow (0.6×)</span>
         </label>
         <span className="ks-small ks-muted">
-          Now using: {activeProvider() === "cloud" ? `${current.name} cloud` : "this device"}
+          Voice preference: {provider===PROVIDERS.LOCAL ? "this device" : "best available cloud voice"}
         </span>
       </div>
 
-      {status && <p className="ks-small" style={{ margin: 0, fontWeight: 700 }}>{status}</p>}
+      {status && <p role="status" className="ks-small" style={{ margin: 0, fontWeight: 700 }}>{status}</p>}
 
-      <details>
+      {managed ? <section className="card-flat ks-stack" aria-label="Shared reading voice">
+        <strong>Shared reading voice</strong>
+        <p className="ks-small" style={{margin:0}}>ElevenLabs is connected by the site owner for all devices. API keys entered in a browser do not configure this shared connection.</p>
+        <button type="button" className="btn btn-sm btn-forest" onClick={handleTest} disabled={busy}>{busy?'Testing...':'Test shared voice'}</button>
+      </section> : <details>
         <summary className="ks-small" style={{ cursor: "pointer", fontWeight: 700 }}>
           {current.keyLabel} {cloudReady ? "✓" : "(free — set one up)"}
         </summary>
@@ -312,7 +315,7 @@ export default function VoicePicker() {
             </button>
           </div>
         </div>
-      </details>
+      </details>}
     </div>
   );
 }
