@@ -33,7 +33,8 @@
     "test:recovery": "node --test scripts/recovery.test.mjs",
     "test:recovery:browser": "node scripts/verify-recovery-browser.mjs",
     "test:dragons": "node --test scripts/dragon.test.mjs",
-    "test:dragons:browser": "node scripts/verify-dragons-mobile.mjs"
+    "test:dragons:browser": "node scripts/verify-dragons-mobile.mjs",
+    "test:tts-proxy": "node --test scripts/tts-proxy.test.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.57.0",

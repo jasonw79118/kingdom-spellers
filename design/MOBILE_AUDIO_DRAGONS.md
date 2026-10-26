@@ -45,3 +45,7 @@ Artwork: public/assets/avatars/painted-v1/hair-{crop,quiff,coils}.{png,webp} and
 ## Settings access follow-up
 
 Enabled the previously disabled dashboard Settings action and added a protected /settings route containing the existing VoicePicker. A header Settings link makes the page reachable during lessons and on mobile. Browser verification passed for navigation, voice-control rendering, direct-route reload and 375px layout; production build passed. No deployment was performed.
+
+## Shared voice deployment follow-up - October 26
+
+User confirmed ElevenLabs was configured only with a desktop-browser key and authorized moving it server-side. Deployed Cloudflare worker kingdom-spellers-tts at https://kingdom-spellers-tts.jasonw79118.workers.dev, initial version a1f30b49-47b5-4d10-96a9-4517b09f0a66. Public health returned ok=true, configured=false before private key entry. Added a public-only .env.production connection; no API key enters the app build. Worker validation/CORS/provider-isolation tests pass. The private local helper requires the user to enter the existing ElevenLabs key, then stores it as a Cloudflare encrypted secret, tests one word, builds and validates the site, publishes gh-pages, pushes the source branch and checks the custom domain. Actual credential validation and site deployment remain pending that private input; consult .snap/voice-setup-status.json for subsequent completion. The helper never stores or prints the API key.

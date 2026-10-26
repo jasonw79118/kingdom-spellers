@@ -166,6 +166,8 @@ export default {
       return json({ error: "Body must be JSON." }, 400, origin);
     }
 
+    if (!body || typeof body !== "object" || Array.isArray(body)) return json({error:"Body must be an object."},400,origin);
+    if (body.provider && body.provider !== "elevenlabs") return json({error:"This voice service supports ElevenLabs only."},400,origin);
     const text = typeof body.text === "string" ? body.text.trim() : "";
     if (!text) return json({ error: "Missing text." }, 400, origin);
     if (text.length > MAX_CHARS) {
@@ -176,7 +178,6 @@ export default {
       return json({ error: "Unsupported characters in text." }, 400, origin);
     }
 
-    const provider = body.provider === "google" ? "google" : "elevenlabs";
     const voice = ALLOWED_VOICES.has(body.voice) ? body.voice : DEFAULT_VOICE;
 
     let speed = Number(body.speed);
@@ -192,6 +193,7 @@ export default {
         `https://api.elevenlabs.io/v1/text-to-speech/${encodeURIComponent(voice)}`,
         {
           method: "POST",
+          signal: AbortSignal.timeout(10000),
           headers: {
             "xi-api-key": env.ELEVENLABS_API_KEY,
             "Content-Type": "application/json",
@@ -239,10 +241,9 @@ export default {
       status: 200,
       headers: {
         "Content-Type": "audio/mpeg",
-        "Content-Length": upstream.headers.get("Content-Length") || "",
         // Safe to cache: the response depends only on text/voice/speed.
         "Cache-Control": "public, max-age=31536000, immutable",
-        "Access-Control-Allow-Origin": origin,
+        ...(origin ? {"Access-Control-Allow-Origin": origin} : {}),
         Vary: "Origin",
       },
     });
