@@ -4,6 +4,7 @@ import { HashRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import Layout from "./components/Layout";
 import LoginPage from "./pages/LoginPage";
+import SettingsPage from "./pages/SettingsPage";
 import PasswordRecoveryPage from "./pages/PasswordRecoveryPage";
 import DashboardPage from "./pages/DashboardPage";
 import PlayersPage from "./pages/PlayersPage";
@@ -60,6 +61,7 @@ export default function App() {
             }
           >
             <Route path="/" element={<DashboardPage />} />
+            <Route path="/settings" element={<SettingsPage />} />
             <Route path="/players" element={<PlayersPage />} />
             <Route path="/lists" element={<ListsPage />} />
             <Route path="/lists/new" element={<ListEditorPage />} />

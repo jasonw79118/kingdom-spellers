@@ -13,7 +13,7 @@ const PARENT_CONTROLS = [
   { icon: "📚", label: "My Lists", to: "/lists", soon: false },
   { icon: "📊", label: "Progress", to: "/progress", soon: false },
   { icon: "👤", label: "Players", to: "/players", soon: false },
-  { icon: "⚙️", label: "Settings", to: "/settings", soon: true },
+  { icon: "⚙️", label: "Settings", to: "/settings", soon: false },
 ];
 
 export default function DashboardPage() {

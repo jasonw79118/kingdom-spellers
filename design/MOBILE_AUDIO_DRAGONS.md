@@ -41,3 +41,7 @@ The installed Windows WebKit build reports both AudioContext and webkitAudioCont
 Commands: npm test; npm run test:avatars; npm run test:sounds; npm run test:dragons; npm run test:avatars:browser; npm run test:sounds:browser; npm run test:dragons:browser; npm run build; npm run verify:release; git diff --check.
 
 Artwork: public/assets/avatars/painted-v1/hair-{crop,quiff,coils}.{png,webp} and public/assets/dragons/{hatchling,young,guardian}.{png,webp}. Full prompts, generated-image source paths and file mappings are in DRAGON_HAIR_ART_MANIFEST.json. These six assets used the built-in image_gen tool. PNG alpha is preserved; WebP siblings are format conversions.
+
+## Settings access follow-up
+
+Enabled the previously disabled dashboard Settings action and added a protected /settings route containing the existing VoicePicker. A header Settings link makes the page reachable during lessons and on mobile. Browser verification passed for navigation, voice-control rendering, direct-route reload and 375px layout; production build passed. No deployment was performed.

@@ -27,6 +27,7 @@ export default function Layout() {
             <span aria-hidden>👑</span> Kingdom Spellers
           </NavLink>
           <div className="topbar-spacer" />
+          <NavLink to="/settings" className="btn btn-ghost btn-sm" style={{color:"inherit"}}>Settings</NavLink>
           <SoundControl/>
           {user && (
             <>
